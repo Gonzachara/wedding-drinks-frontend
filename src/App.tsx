@@ -9,6 +9,7 @@ import Guest from './pages/Guest';
 import GuestPortal from './pages/GuestPortal';
 import Dashboard from './pages/Dashboard';
 import Projectable from './pages/Projectable';
+import CreateUser from './pages/CreateUser';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; role?: 'admin' | 'bartender' | 'supervisor' }> = ({ children, role }) => {
   const { user, isAuthenticated } = useAuth();
@@ -34,6 +35,7 @@ const App: React.FC = () => {
         <SocketProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/create-user" element={<CreateUser />} />
             <Route path="/guest/:code" element={<Guest />} />
             <Route path="/portal" element={<GuestPortal />} />
             <Route path="/projectable" element={<Projectable />} />
