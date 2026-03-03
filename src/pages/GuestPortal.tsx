@@ -8,6 +8,7 @@ const GuestPortal: React.FC = () => {
   const [name, setName] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [selectedGuest, setSelectedGuest] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -55,14 +56,24 @@ const GuestPortal: React.FC = () => {
           {results.map((guest) => (
             <button
               key={guest.unique_code}
-              onClick={() => setSelectedGuest(guest)}
+              onClick={async () => {
+                setLoadingDetails(true);
+                try {
+                  const resp = await api.get(`/bartender/public/guest/${guest.unique_code}`);
+                  setSelectedGuest({ ...guest, ...resp.data });
+                } catch (e) {
+                  setSelectedGuest(guest);
+                } finally {
+                  setLoadingDetails(false);
+                }
+              }}
               className="w-full p-6 bg-white border-2 border-gray-100 rounded-3xl flex items-center justify-between hover:border-black transition-all active:scale-95 shadow-sm"
             >
               <div className="flex items-center space-x-4">
 
                 <div className="text-left">
                   <p className="font-black text-lg text-gray-900">{guest.name.toUpperCase()}</p>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Toca para ver QR</p>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{loadingDetails ? 'Cargando...' : 'Toca para ver QR'}</p>
                 </div>
               </div>
               <div className="text-2xl font-black text-gray-900">#{guest.unique_code}</div>
@@ -75,6 +86,9 @@ const GuestPortal: React.FC = () => {
         <QRCodeModal
           guestName={selectedGuest.name}
           uniqueCode={selectedGuest.unique_code}
+          drinksConsumed={selectedGuest.drinks_consumed}
+          maxDrinks={selectedGuest.max_drinks}
+          status={selectedGuest.status}
           onClose={() => setSelectedGuest(null)}
         />
       )}
