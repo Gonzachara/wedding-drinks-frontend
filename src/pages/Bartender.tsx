@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, QrCode, Search, GlassWater, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { useSocket } from '../context/SocketContext';
+import { LogOut, QrCode, Search, GlassWater, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Guest {
   id: number;
@@ -13,6 +15,14 @@ interface Guest {
   status: 'active' | 'blocked' | 'cooldown';
 }
 
+interface OfflineTransaction {
+  id: string;
+  guest_code: string;
+  drink_id: number;
+  points_value: number;
+  local_timestamp: string;
+}
+
 const Bartender: React.FC = () => {
   const [code, setCode] = useState('');
   const [guest, setGuest] = useState<Guest | null>(null);
@@ -21,14 +31,78 @@ const Bartender: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [blockedMsg, setBlockedMsg] = useState('');
-  const [menu, setMenu] = useState<Array<{ id: number; name: string; points_value: number; category?: string }>>([]);
+  const [menu, setMenu] = useState<Array<{ id: number; name: string; points_value: number; category?: string; is_alcoholic: boolean }>>([]);
   const [showDrinkSelect, setShowDrinkSelect] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlineQueue, setOfflineQueue] = useState<OfflineTransaction[]>([]);
+  const [emergencyMode, setEmergencyMode] = useState<'inactive' | 'alcohol_off' | 'full_stop'>('inactive');
 
   const { logout } = useAuth();
+  const { socket } = useSocket();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     api.get('/menu').then(res => setMenu(res.data)).catch(console.error);
+    
+    const savedQueue = localStorage.getItem('offline_queue');
+    if (savedQueue) {
+      setOfflineQueue(JSON.parse(savedQueue));
+    }
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Cargar sonido de notificación
+    audioRef.current = new Audio('/notification.mp3');
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('emergency_mode_update', (data: { mode: any }) => {
+        setEmergencyMode(data.mode);
+        if (data.mode !== 'inactive') {
+          setBlockedMsg(data.mode === 'full_stop' ? 'SISTEMA BLOQUEADO' : 'ALCOHOL BLOQUEADO');
+        } else {
+          setBlockedMsg('');
+        }
+      });
+    }
+    return () => {
+      if (socket) socket.off('emergency_mode_update');
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (isOnline && offlineQueue.length > 0) {
+      syncOfflineTransactions();
+    }
+  }, [isOnline]);
+
+  const syncOfflineTransactions = async () => {
+    if (offlineQueue.length === 0) return;
+    try {
+      const response = await api.post('/sync', { transactions: offlineQueue });
+      const { synced, conflicts, errors } = response.data;
+      
+      const newQueue = offlineQueue.filter(tx => !synced.includes(tx.id) && !conflicts.some((c: any) => c.id === tx.id));
+      setOfflineQueue(newQueue);
+      localStorage.setItem('offline_queue', JSON.stringify(newQueue));
+      
+      if (synced.length > 0) {
+        setSuccessMsg(`SINCRO: ${synced.length} OK`);
+        setTimeout(() => setSuccessMsg(''), 2000);
+      }
+    } catch (err) {
+      console.error('Error syncing transactions', err);
+    }
+  };
 
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
@@ -45,9 +119,7 @@ const Bartender: React.FC = () => {
   }, [showScanner]);
 
   function onScanSuccess(decodedText: string) {
-    // Busca un código de 4 dígitos al final de una URL /guest/
     const match = decodedText.match(/\/guest\/(\d{4})$/);
-    // Si encuentra el patrón, usa el código. Si no, usa el texto escaneado tal cual.
     const cleanCode = match ? match[1] : decodedText;
     
     setCode(cleanCode);
@@ -55,9 +127,7 @@ const Bartender: React.FC = () => {
     handleSearch(cleanCode);
   }
 
-  function onScanError() {
-    // console.warn(err);
-  }
+  function onScanError() {}
 
   const handleSearch = async (searchCode?: string) => {
     const codeToSearch = searchCode || code;
@@ -85,47 +155,82 @@ const Bartender: React.FC = () => {
     }
   };
 
-  const handleRegisterDrink = async (drinkId: number, pointsValue: number) => {
+  const handleRegisterDrink = async (drink: any) => {
     if (!guest) return;
+    
+    // Check emergency mode client-side
+    if (emergencyMode === 'full_stop' || (emergencyMode === 'alcohol_off' && drink.is_alcoholic)) {
+      setError('MODO EMERGENCIA ACTIVO');
+      return;
+    }
+
     setLoading(true);
     setError('');
+
+    const pointsValue = drink.points_value;
+
+    if (!isOnline) {
+      const offlineTx: OfflineTransaction = {
+        id: Math.random().toString(36).substr(2, 9),
+        guest_code: guest.unique_code,
+        drink_id: drink.id,
+        points_value: pointsValue,
+        local_timestamp: new Date().toISOString()
+      };
+      
+      const newQueue = [...offlineQueue, offlineTx];
+      setOfflineQueue(newQueue);
+      localStorage.setItem('offline_queue', JSON.stringify(newQueue));
+      
+      processSuccessfulRegistration(pointsValue, 'active'); // Assume active for offline
+      setSuccessMsg('GUARDADO OFFLINE');
+      setTimeout(() => setSuccessMsg(''), 2000);
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await api.post(`/bartender/drink`, {
         guest_code: guest.unique_code,
-        drink_id: drinkId,
+        drink_id: drink.id,
         device_info: window.navigator.userAgent
       });
 
       setSuccessMsg('¡REGISTRADO!');
-      
-      const newPoints = guest.points_consumed + pointsValue;
-      const newStatus = response.data.guest_status;
-
-      setGuest(prev => prev ? {
-        ...prev,
-        points_consumed: newPoints,
-        status: newStatus
-      } : null);
-
-      if (newStatus === 'blocked') {
-        setTimeout(() => setBlockedMsg('LÍMITE ALCANZADO'), 1500);
-      }
+      processSuccessfulRegistration(pointsValue, response.data.guest_status);
 
       setTimeout(() => {
         setSuccessMsg('');
         setShowDrinkSelect(false);
       }, 2000);
 
-      if (window.navigator.vibrate) {
-        window.navigator.vibrate([100, 50, 100]);
-      }
-
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al registrar');
       setTimeout(() => setError(''), 3000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const processSuccessfulRegistration = (pointsValue: number, newStatus: string) => {
+    const newPoints = (guest?.points_consumed || 0) + pointsValue;
+    
+    setGuest(prev => prev ? {
+      ...prev,
+      points_consumed: newPoints,
+      status: newStatus as any
+    } : null);
+
+    if (newStatus === 'blocked') {
+      setTimeout(() => setBlockedMsg('LÍMITE ALCANZADO'), 1500);
+    }
+
+    // Haptic and Sound feedback
+    if (window.navigator.vibrate) {
+      window.navigator.vibrate([100, 50, 100]);
+    }
+    if (audioRef.current) {
+      audioRef.current.play().catch(() => {});
     }
   };
 
@@ -137,7 +242,10 @@ const Bartender: React.FC = () => {
     setBlockedMsg('');
   };
 
-  // Pantalla de bloqueo total si el límite se alcanzó
+  const pointsRemaining = guest ? Math.max(0, guest.points_limit - guest.points_consumed) : 0;
+  const consumptionPercentage = guest ? (guest.points_consumed / guest.points_limit) * 100 : 0;
+  const isWarning = consumptionPercentage >= 75 && consumptionPercentage < 100;
+
   if (blockedMsg) {
     return (
       <div className="fixed inset-0 bg-red-600 z-50 flex flex-col items-center justify-center p-6 text-white animate-in fade-in duration-300">
@@ -146,24 +254,33 @@ const Bartender: React.FC = () => {
           {blockedMsg}
         </h1>
         <p className="text-2xl font-bold opacity-80 mb-12 uppercase tracking-widest">
-          No puede consumir más alcohol
+          {emergencyMode !== 'inactive' ? 'Acción restringida por administrador' : 'No puede consumir más alcohol'}
         </p>
         <div className="bg-white/20 p-6 rounded-3xl backdrop-blur-md w-full max-w-sm text-center mb-12">
             <p className="text-lg font-medium opacity-80 mb-1">Invitado:</p>
-            <p className="text-3xl font-black">{guest?.name.toUpperCase()}</p>
+            <p className="text-3xl font-black">{guest?.name.toUpperCase() || 'SISTEMA'}</p>
         </div>
         <button 
           onClick={handleClear}
           className="bg-white text-red-600 px-12 py-6 rounded-3xl font-black text-2xl shadow-2xl active:scale-95 transition-all"
         >
-          SIGUIENTE INVITADO
+          {emergencyMode !== 'inactive' ? 'VOLVER' : 'SIGUIENTE INVITADO'}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
+    <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative overflow-hidden">
+      {/* Network Status */}
+      <div className={`text-[10px] font-black uppercase tracking-widest py-1 px-4 text-center transition-colors ${isOnline ? 'bg-green-500/10 text-green-600' : 'bg-red-500 text-white'}`}>
+        <div className="flex items-center justify-center space-x-2">
+          {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
+          <span>{isOnline ? 'Conectado' : 'Modo Offline'}</span>
+          {offlineQueue.length > 0 && <span> | {offlineQueue.length} pendientes</span>}
+        </div>
+      </div>
+
       {/* Header Bartender */}
       <header className="bg-white border-b border-gray-100 p-4 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center space-x-2">
@@ -172,9 +289,16 @@ const Bartender: React.FC = () => {
           </div>
           <span className="font-bold tracking-tight uppercase text-sm">Bartender Mode</span>
         </div>
-        <button onClick={logout} className="p-2 text-gray-400 hover:text-black">
-          <LogOut size={20} />
-        </button>
+        <div className="flex items-center space-x-2">
+          {offlineQueue.length > 0 && isOnline && (
+            <button onClick={syncOfflineTransactions} className="p-2 text-blue-500 animate-spin">
+              <RefreshCw size={20} />
+            </button>
+          )}
+          <button onClick={logout} className="p-2 text-gray-400 hover:text-black">
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 p-6 space-y-6">
@@ -238,11 +362,19 @@ const Bartender: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-8 animate-in zoom-in duration-300">
-            <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-gray-100 text-center space-y-6 relative overflow-hidden">
+            <div className={`bg-white p-8 rounded-[3rem] shadow-xl border-4 ${isWarning ? 'border-yellow-400' : 'border-gray-100'} text-center space-y-6 relative overflow-hidden transition-colors`}>
               {successMsg && (
                 <div className="absolute inset-0 bg-green-500 flex flex-col items-center justify-center text-white animate-in zoom-in duration-200 z-20">
                   <CheckCircle2 size={80} className="mb-4" />
                   <span className="text-3xl font-black">{successMsg}</span>
+                </div>
+              )}
+
+              {isWarning && (
+                <div className="absolute top-4 left-0 right-0 animate-pulse">
+                  <span className="bg-yellow-400 text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                    ⚠️ ALCANZANDO LÍMITE
+                  </span>
                 </div>
               )}
 
@@ -253,13 +385,13 @@ const Bartender: React.FC = () => {
                 </h3>
               </div>
 
-              <div className="py-8 bg-gray-50 rounded-[2.5rem] space-y-2 border border-gray-100">
+              <div className={`py-8 rounded-[2.5rem] space-y-2 border ${isWarning ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-100'}`}>
                 <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Puntos Restantes</p>
-                <p className="text-7xl font-black text-gray-900 leading-none tracking-tighter">
-                  {Math.max(0, guest.points_limit - guest.points_consumed)}
+                <p className={`text-7xl font-black leading-none tracking-tighter ${isWarning ? 'text-yellow-700' : 'text-gray-900'}`}>
+                  {pointsRemaining}
                 </p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                  Total consumido: {guest.points_consumed}/{guest.points_limit}
+                  Consumido: {guest.points_consumed}/{guest.points_limit}
                 </p>
               </div>
 
@@ -280,13 +412,15 @@ const Bartender: React.FC = () => {
                       {menu.map(drink => (
                         <button
                           key={drink.id}
-                          onClick={() => handleRegisterDrink(drink.id, drink.points_value)}
+                          onClick={() => handleRegisterDrink(drink)}
                           disabled={loading}
                           className="flex items-center justify-between p-4 bg-gray-50 hover:bg-black hover:text-white rounded-2xl transition-all border border-gray-100 text-left group"
                         >
                           <div>
                             <p className="font-black text-sm uppercase leading-none">{drink.name}</p>
-                            <p className="text-[10px] font-bold text-gray-400 group-hover:text-white/60">{drink.category || 'Sin categoría'}</p>
+                            <p className="text-[10px] font-bold text-gray-400 group-hover:text-white/60">
+                              {drink.category || 'Sin categoría'} {drink.is_alcoholic ? '🍸' : '💧'}
+                            </p>
                           </div>
                           <span className="font-black text-lg">+{drink.points_value}</span>
                         </button>
