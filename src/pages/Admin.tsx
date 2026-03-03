@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import QRCodeModal from '../components/QRCodeModal';
-import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Ban, Edit2, Settings, ListPlus, History, Download, Sun, Moon } from 'lucide-react';
+import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Ban, Edit2, Settings, ListPlus, History, Download } from 'lucide-react';
 
 interface Guest {
   id: number;
@@ -30,8 +30,8 @@ const Admin: React.FC = () => {
   const [showGlobalModal, setShowGlobalModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showMenuModal, setShowMenuModal] = useState(false);
   const [guestForQR, setGuestForQR] = useState<Guest | null>(null);
-  const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
   
   // Estados para formularios
   const [newGuestName, setNewGuestName] = useState('');
@@ -39,6 +39,8 @@ const Admin: React.FC = () => {
   const [editGuest, setEditGuest] = useState({ id: 0, name: '', max_drinks: 4 });
   const [globalLimit, setGlobalLimit] = useState(4);
   const [stats, setStats] = useState({ total: 0, consumed: 0, blocked: 0 });
+  const [menu, setMenu] = useState<Array<{ id: number; name: string; description?: string; category?: string }>>([]);
+  const [newDrink, setNewDrink] = useState({ name: '', description: '', category: '' });
 
   const { logout } = useAuth();
 
@@ -63,15 +65,14 @@ const Admin: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+  const fetchMenu = async () => {
+    try {
+      const response = await api.get('/menu');
+      setMenu(response.data);
+    } catch (err) {
+      console.error('Error fetching menu', err);
     }
-  }, [darkMode]);
+  };
 
   const handleExportCSV = () => {
     const headers = ['Nombre', 'Codigo', 'Consumido', 'Limite', 'Estado'];
@@ -180,6 +181,32 @@ const Admin: React.FC = () => {
     }
   };
 
+  const handleAddDrink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDrink.name.trim()) return;
+    try {
+      await api.post('/menu', {
+        name: newDrink.name.trim(),
+        description: newDrink.description?.trim() || undefined,
+        category: newDrink.category?.trim() || undefined
+      });
+      setNewDrink({ name: '', description: '', category: '' });
+      fetchMenu();
+    } catch (err) {
+      console.error('Error adding drink', err);
+    }
+  };
+
+  const handleDeleteDrink = async (id: number) => {
+    if (!window.confirm('¿Eliminar este trago del menú?')) return;
+    try {
+      await api.delete(`/menu/${id}`);
+      fetchMenu();
+    } catch (err) {
+      console.error('Error deleting drink', err);
+    }
+  };
+
   const filteredGuests = guests.filter(g => 
     g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     g.unique_code.includes(searchTerm)
@@ -196,9 +223,6 @@ const Admin: React.FC = () => {
           <h1 className="text-lg font-black tracking-tight uppercase dark:text-white">Admin</h1>
         </div>
         <div className="flex items-center space-x-2">
-          <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-gray-400 hover:text-black dark:hover:text-white">
-            {darkMode ? <Sun size={22} /> : <Moon size={22} />}
-          </button>
           <button onClick={() => setShowGlobalModal(true)} className="p-2 text-gray-400 hover:text-black dark:hover:text-white">
             <Settings size={22} />
           </button>
@@ -226,7 +250,7 @@ const Admin: React.FC = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <button 
             onClick={() => setShowBulkModal(true)}
             className="flex items-center justify-center space-x-2 p-4 bg-black dark:bg-white text-white dark:text-black rounded-3xl font-bold text-sm uppercase tracking-widest shadow-lg active:scale-95 transition-all"
@@ -243,6 +267,13 @@ const Admin: React.FC = () => {
           >
             <History size={20} />
             <span>Historial</span>
+          </button>
+          <button 
+            onClick={() => { fetchMenu(); setShowMenuModal(true); }}
+            className="flex items-center justify-center space-x-2 p-4 bg-white dark:bg-white/10 text-black dark:text-white border-2 border-gray-100 dark:border-white/10 rounded-3xl font-bold text-sm uppercase tracking-widest shadow-sm active:scale-95 transition-all"
+          >
+            <GlassWater size={20} />
+            <span>Carta de Tragos</span>
           </button>
         </div>
 
@@ -468,11 +499,65 @@ const Admin: React.FC = () => {
         </div>
       )}
 
+      {/* Modal Carta de Tragos */}
+      {showMenuModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-t-[3rem] md:rounded-[3rem] w-full max-w-md p-8 animate-in slide-in-from-bottom duration-300 max-h-[80vh] flex flex-col">
+            <h3 className="text-2xl font-black mb-4 uppercase dark:text-white">Carta de Tragos</h3>
+            <form onSubmit={handleAddDrink} className="grid grid-cols-1 gap-3 mb-4">
+              <input
+                type="text"
+                value={newDrink.name}
+                onChange={(e) => setNewDrink({ ...newDrink, name: e.target.value })}
+                placeholder="Nombre del trago"
+                className="px-4 py-3 bg-gray-50 dark:bg-white/5 border-2 border-transparent rounded-2xl font-bold focus:border-black dark:focus:border-white dark:text-white"
+              />
+              <input
+                type="text"
+                value={newDrink.description}
+                onChange={(e) => setNewDrink({ ...newDrink, description: e.target.value })}
+                placeholder="Descripción (opcional)"
+                className="px-4 py-3 bg-gray-50 dark:bg-white/5 border-2 border-transparent rounded-2xl font-bold focus:border-black dark:focus:border-white dark:text-white"
+              />
+              <input
+                type="text"
+                value={newDrink.category}
+                onChange={(e) => setNewDrink({ ...newDrink, category: e.target.value })}
+                placeholder="Categoría (opcional)"
+                className="px-4 py-3 bg-gray-50 dark:bg-white/5 border-2 border-transparent rounded-2xl font-bold focus:border-black dark:focus:border-white dark:text-white"
+              />
+              <div className="flex space-x-3">
+                <button type="button" onClick={() => setShowMenuModal(false)} className="flex-1 py-4 font-black text-gray-400 uppercase tracking-widest">Cerrar</button>
+                <button type="submit" className="flex-1 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase tracking-widest shadow-xl">Agregar</button>
+              </div>
+            </form>
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {menu.length === 0 ? (
+                <p className="text-center text-gray-400 uppercase font-bold text-xs tracking-widest">No hay tragos cargados</p>
+              ) : (
+                menu.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between bg-white/60 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl px-4 py-3">
+                    <div className="flex-1">
+                      <p className="font-black dark:text-white">{item.name}</p>
+                      {item.description && <p className="text-xs text-gray-500">{item.description}</p>}
+                    </div>
+                    <button onClick={() => handleDeleteDrink(item.id)} className="text-red-500 font-bold text-xs uppercase tracking-widest">Eliminar</button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* QR Modal */}
       {guestForQR && (
         <QRCodeModal
           guestName={guestForQR.name}
           uniqueCode={guestForQR.unique_code}
+          drinksConsumed={guestForQR.drinks_consumed}
+          maxDrinks={guestForQR.max_drinks}
+          status={guestForQR.status}
           onClose={() => setGuestForQR(null)}
         />
       )}
