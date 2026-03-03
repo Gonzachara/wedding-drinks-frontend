@@ -14,6 +14,8 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const showSetup = new URLSearchParams(location.search).get('setup') === '1';
+  const [showRegister, setShowRegister] = useState(false);
+  const [role, setRole] = useState<'admin' | 'bartender'>('admin');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,22 +40,22 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleRegisterAdmin = async () => {
+  const handleRegister = async () => {
     setError('');
     const user = username.trim();
     const pass = password.trim();
     if (!user || !pass) {
-      setError('Ingresa usuario y contraseña para crear el admin');
+      setError('Ingresa usuario y contraseña válidos');
       return;
     }
     try {
       setLoading(true);
-      await api.post('/auth/register', { username: user, password: pass, role: 'admin' });
+      await api.post('/auth/register', { username: user, password: pass, role });
       const response = await api.post('/auth/login', { username: user, password: pass });
       const { token } = response.data;
       login(token);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'No se pudo crear el admin');
+      setError(err.response?.data?.message || 'No se pudo crear el usuario');
     } finally {
       setLoading(false);
     }
@@ -126,21 +128,51 @@ const Login: React.FC = () => {
           </div>
         </form>
 
-        {showSetup && (
+        {(showSetup || showRegister) && (
           <div className="pt-2">
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="role" className="text-xs font-bold text-gray-500">Rol</label>
+              <select
+                id="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as 'admin' | 'bartender')}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="admin">admin</option>
+                <option value="bartender">bartender</option>
+              </select>
+            </div>
             <button
               type="button"
-              onClick={handleRegisterAdmin}
+              onClick={handleRegister}
               disabled={loading}
               className="w-full py-3 px-4 mt-2 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95"
-              title="Crear usuario ADMIN si no existe"
+              title="Crear usuario si no existe"
             >
-              {loading ? 'Creando admin...' : 'Crear Admin con estas credenciales'}
+              {loading ? 'Creando usuario...' : 'Crear usuario con estas credenciales'}
             </button>
-            <p className="text-[10px] text-gray-400 text-center mt-2">
-              Solo visible con ?setup=1 en la URL.
-            </p>
+            {!showSetup && (
+              <p className="text-[10px] text-gray-400 text-center mt-2">
+                Modo registro rápido. Ocultar
+                <button
+                  type="button"
+                  onClick={() => setShowRegister(false)}
+                  className="ml-1 underline"
+                >
+                  aquí
+                </button>
+              </p>
+            )}
           </div>
+        )}
+        {!showSetup && (
+          <button
+            type="button"
+            onClick={() => setShowRegister((v) => !v)}
+            className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600"
+          >
+            ¿No tienes usuario? Crear uno
+          </button>
         )}
 
         <div className="relative">
