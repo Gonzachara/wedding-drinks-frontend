@@ -24,6 +24,7 @@ const Admin: React.FC = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -46,11 +47,18 @@ const Admin: React.FC = () => {
 
   const fetchGuests = async () => {
     try {
+      setError('');
       const response = await api.get('/guests');
       setGuests(response.data);
       calculateStats(response.data);
     } catch (err) {
-      console.error('Error fetching guests', err);
+      const anyErr: any = err;
+      const status = anyErr?.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Tu sesión expiró. Vuelve a iniciar sesión.');
+      } else {
+        setError('Error del servidor al cargar invitados.');
+      }
     } finally {
       setLoading(false);
     }
@@ -233,6 +241,11 @@ const Admin: React.FC = () => {
       </header>
 
       <main className="flex-1 p-4 max-w-4xl mx-auto w-full space-y-6">
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm font-bold">
+            {error}
+          </div>
+        )}
         {/* Stats - Compactas para mobile */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white dark:bg-white/5 p-4 rounded-3xl border border-gray-100 dark:border-white/10 shadow-sm text-center">
