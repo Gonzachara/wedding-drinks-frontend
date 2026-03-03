@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Download, Martini, Sparkles } from 'lucide-react';
-import api from '../services/api';
+import { X, Download, Martini } from 'lucide-react';
+import MenuModal from './MenuModal';
 
 interface QRCodeModalProps {
   guestName: string;
@@ -13,16 +13,7 @@ interface QRCodeModalProps {
 }
 
 const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClose, drinksConsumed, maxDrinks, status }) => {
-  const [menu, setMenu] = useState<Array<{ id: number; name: string; description?: string; category?: string }>>([]);
   const [showMenu, setShowMenu] = useState(false);
-
-  useEffect(() => {
-    if (showMenu) {
-      api.get('/menu')
-        .then(res => setMenu(res.data))
-        .catch(() => setMenu([]));
-    }
-  }, [showMenu]);
 
   const downloadQR = () => {
     const svg = document.getElementById('guest-qr');
@@ -90,30 +81,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClos
             <Download size={20} />
             <span>DESCARGAR</span>
           </button>
-          {showMenu && (
-            <div className="mt-2 w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-3 max-h-64 overflow-auto">
-              {menu.length === 0 ? (
-                <p className="text-center text-gray-400 text-sm">Sin tragos cargados aún</p>
-              ) : (
-                menu.map(item => (
-                  <div key={item.id} className="flex items-start space-x-3">
-                    <div className="p-2 bg-black text-white rounded-lg">
-                      <Sparkles size={16} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-black text-gray-900 leading-tight">{item.name}</p>
-                      {item.description && <p className="text-xs text-gray-500">{item.description}</p>}
-                    </div>
-                    {item.category && (
-                      <span className="text-[10px] font-black uppercase tracking-widest bg-white border border-gray-100 rounded-md px-2 py-1 text-gray-500">
-                        {item.category}
-                      </span>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+          {showMenu && <MenuModal onClose={() => setShowMenu(false)} />}
         </div>
       </div>
     </div>
