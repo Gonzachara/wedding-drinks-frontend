@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import QRCodeModal from '../components/QRCodeModal';
-import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Users, Ban, Edit2, Settings, ChevronRight } from 'lucide-react';
+import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Ban, Edit2, Settings } from 'lucide-react';
 
 interface Guest {
   id: number;
@@ -20,7 +20,6 @@ const Admin: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showGlobalModal, setShowGlobalModal] = useState(false);
-  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [guestForQR, setGuestForQR] = useState<Guest | null>(null);
   
   // Estados para formularios
