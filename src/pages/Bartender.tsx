@@ -39,12 +39,10 @@ const Bartender: React.FC = () => {
   }, [showScanner]);
 
   function onScanSuccess(decodedText: string) {
-    // Si el texto escaneado es una URL completa, extraemos solo el código final
-    let cleanCode = decodedText;
-    if (decodedText.includes('/guest/')) {
-      const parts = decodedText.split('/guest/');
-      cleanCode = parts[parts.length - 1];
-    }
+    // Busca un código de 4 dígitos al final de una URL /guest/
+    const match = decodedText.match(/\/guest\/(\d{4})$/);
+    // Si encuentra el patrón, usa el código. Si no, usa el texto escaneado tal cual.
+    const cleanCode = match ? match[1] : decodedText;
     
     setCode(cleanCode);
     setShowScanner(false);
