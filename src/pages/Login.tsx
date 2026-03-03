@@ -14,7 +14,6 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const showSetup = new URLSearchParams(location.search).get('setup') === '1';
-  const [showRegister, setShowRegister] = useState(false);
   const [role, setRole] = useState<'admin' | 'bartender'>('admin');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,7 +127,7 @@ const Login: React.FC = () => {
           </div>
         </form>
 
-        {(showSetup || showRegister) && (
+        {showSetup && (
           <div className="pt-2">
             <div className="flex items-center justify-between mb-2">
               <label htmlFor="role" className="text-xs font-bold text-gray-500">Rol</label>
@@ -151,28 +150,7 @@ const Login: React.FC = () => {
             >
               {loading ? 'Creando usuario...' : 'Crear usuario con estas credenciales'}
             </button>
-            {!showSetup && (
-              <p className="text-[10px] text-gray-400 text-center mt-2">
-                Modo registro rápido. Ocultar
-                <button
-                  type="button"
-                  onClick={() => setShowRegister(false)}
-                  className="ml-1 underline"
-                >
-                  aquí
-                </button>
-              </p>
-            )}
           </div>
-        )}
-        {!showSetup && (
-          <button
-            type="button"
-            onClick={() => setShowRegister((v) => !v)}
-            className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600"
-          >
-            ¿No tienes usuario? Crear uno
-          </button>
         )}
 
         <div className="relative">
