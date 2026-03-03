@@ -19,7 +19,14 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', { username, password });
+      const user = username.trim();
+      const pass = password.trim();
+      if (!user || !pass) {
+        setError('Por favor, ingresa usuario y contraseña válidos');
+        setLoading(false);
+        return;
+      }
+      const response = await api.post('/auth/login', { username: user, password: pass });
       const { token } = response.data;
       login(token);
     } catch (err: any) {
