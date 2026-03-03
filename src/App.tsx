@@ -18,7 +18,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; role?: 'admin' | 'ba
   }
 
   if (role && user?.role !== role && user?.role !== 'admin') {
-    return <Navigate to={user?.role === 'admin' ? '/admin' : '/bartender'} />;
+    return <Navigate to="/login" />;
   }
 
   return <>{children}</>;
