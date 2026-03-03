@@ -39,9 +39,16 @@ const Bartender: React.FC = () => {
   }, [showScanner]);
 
   function onScanSuccess(decodedText: string) {
-    setCode(decodedText);
+    // Si el texto escaneado es una URL completa, extraemos solo el código final
+    let cleanCode = decodedText;
+    if (decodedText.includes('/guest/')) {
+      const parts = decodedText.split('/guest/');
+      cleanCode = parts[parts.length - 1];
+    }
+    
+    setCode(cleanCode);
     setShowScanner(false);
-    handleSearch(decodedText);
+    handleSearch(cleanCode);
   }
 
   function onScanError() {
