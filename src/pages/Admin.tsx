@@ -43,7 +43,7 @@ const Admin: React.FC = () => {
   const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
   const [newDrink, setNewDrink] = useState({ name: '', description: '', category: '', points_value: 10, is_alcoholic: true });
   const [newGuest, setNewGuest] = useState({ name: '', category_id: 0 });
-  const [editGuestData, setEditGuestData] = useState({ id: 0, name: '', points_limit: 100, category_id: 0 });
+  const [editGuestData, setEditGuestData] = useState({ id: 0, name: '', points_limit: 100, category_id: 0, status: 'active' as 'active' | 'blocked' | 'cooldown' });
 
   const { logout } = useAuth();
 
@@ -157,7 +157,8 @@ const Admin: React.FC = () => {
       await api.put(`/guests/${editGuestData.id}`, {
         name: editGuestData.name, 
         points_limit: editGuestData.points_limit,
-        category_id: editGuestData.category_id || null
+        category_id: editGuestData.category_id || null,
+        status: editGuestData.status
       });
       setShowEditModal(false);
       fetchGuests();
@@ -300,7 +301,7 @@ const Admin: React.FC = () => {
                         key={guest.id} 
                         guest={guest} 
                         onQR={() => setGuestForQR(guest)}
-                  onEdit={() => { setEditGuestData({ id: guest.id, name: guest.name, points_limit: guest.points_limit, category_id: (guest as any).category_id || 0 }); setShowEditModal(true); }}
+                        onEdit={() => { setEditGuestData({ id: guest.id, name: guest.name, points_limit: guest.points_limit, category_id: (guest as any).category_id || 0, status: guest.status }); setShowEditModal(true); }}
                   onReset={() => handleResetDrinks(guest.id)}
                   onDelete={() => handleDeleteGuest(guest.id)}
                 />
@@ -503,6 +504,14 @@ const EditGuestModal: React.FC<{ onClose: () => void; onSave: (e: React.FormEven
           <select value={guest.category_id} onChange={e => setGuest({...guest, category_id: parseInt(e.target.value)})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-black focus:outline-none">
             <option value="0">Sin Categoría</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Estado</label>
+          <select value={guest.status} onChange={e => setGuest({...guest, status: e.target.value})} className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-black focus:outline-none">
+            <option value="active">Activo</option>
+            <option value="blocked">Bloqueado</option>
+            <option value="cooldown">Cooldown</option>
           </select>
         </div>
         <div>

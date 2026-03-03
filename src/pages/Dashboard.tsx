@@ -14,7 +14,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { GlassWater, Users, Ban, TrendingUp, Clock, MapPin, Download } from 'lucide-react';
+import { GlassWater, Users, Ban, TrendingUp, Clock, MapPin, Download, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 ChartJS.register(
   CategoryScale,
@@ -45,6 +46,8 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket();
+  const navigate = useNavigate();
+  const [downloading, setDownloading] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -133,15 +136,37 @@ const Dashboard: React.FC = () => {
           <p className="text-gray-500 font-medium">Estadísticas en tiempo real del evento</p>
         </div>
         <div className="flex space-x-2">
-          <a 
-            href={`${api.defaults.baseURL}/export/pdf/report`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center space-x-2 bg-black text-white px-6 py-3 rounded-2xl font-bold uppercase text-sm tracking-widest shadow-lg hover:scale-105 transition-transform"
+          <button 
+            onClick={() => navigate('/admin')}
+            className="flex items-center space-x-2 border-2 border-gray-200 px-6 py-3 rounded-2xl font-bold uppercase text-sm tracking-widest hover:bg-gray-50"
+          >
+            <ArrowLeft size={18} />
+            <span>Volver</span>
+          </button>
+          <button 
+            onClick={async () => {
+              try {
+                setDownloading(true);
+                const response = await api.get('/export/pdf/report', { responseType: 'blob' });
+                const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', 'reporte_dashboard.pdf');
+                document.body.appendChild(link);
+                link.click();
+                link.parentNode?.removeChild(link);
+              } catch (e) {
+                console.error('No se pudo descargar el PDF', e);
+              } finally {
+                setDownloading(false);
+              }
+            }}
+            disabled={downloading}
+            className="flex items-center space-x-2 bg-black text-white px-6 py-3 rounded-2xl font-bold uppercase text-sm tracking-widest shadow-lg hover:scale-105 transition-transform disabled:opacity-50"
           >
             <Download size={18} />
-            <span>Reporte PDF</span>
-          </a>
+            <span>{downloading ? 'Descargando...' : 'Reporte PDF'}</span>
+          </button>
         </div>
       </header>
 

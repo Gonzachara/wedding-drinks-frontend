@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Download, Martini } from 'lucide-react';
+import { X, Download, Martini, History } from 'lucide-react';
 import MenuModal from './MenuModal';
+import api from '../services/api';
+import { useSocket } from '../context/SocketContext';
 
 interface QRCodeModalProps {
   guestName: string;
@@ -14,6 +16,30 @@ interface QRCodeModalProps {
 
 const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClose, pointsConsumed, pointsLimit, status }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [history, setHistory] = useState<Array<{ id: number; drink_name: string; points: number; timestamp: string }>>([]);
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    let mounted = true;
+    api.get(`/guests/public/history/${uniqueCode}`)
+      .then(res => { if (mounted) setHistory(res.data); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [uniqueCode]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (payload: any) => {
+      if (payload && payload.guest_code === uniqueCode) {
+        setHistory(prev => [
+          { id: Date.now(), drink_name: payload.drink_name, points: payload.points, timestamp: new Date().toISOString() },
+          ...prev.slice(0, 19)
+        ]);
+      }
+    };
+    socket.on('new_transaction', handler);
+    return () => { socket.off('new_transaction', handler); };
+  }, [socket, uniqueCode]);
 
   const downloadQR = () => {
     const svg = document.getElementById('guest-qr');
@@ -82,6 +108,25 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClos
             <span>DESCARGAR</span>
           </button>
           {showMenu && <MenuModal onClose={() => setShowMenu(false)} />}
+          
+          <div className="mt-2 bg-gray-50 border border-gray-100 rounded-2xl p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <History size={18} className="text-gray-500" />
+              <span className="text-xs font-black uppercase tracking-widest text-gray-500">Historial reciente</span>
+            </div>
+            {history.length === 0 ? (
+              <p className="text-xs text-gray-400">Sin movimientos aún.</p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {history.map(h => (
+                  <div key={h.id} className="flex items-center justify-between text-sm bg-white rounded-xl px-3 py-2 border border-gray-100">
+                    <span className="font-bold">{h.drink_name || 'Bebida'}</span>
+                    <span className="text-gray-500 text-xs">+{h.points} pts</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

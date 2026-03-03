@@ -314,7 +314,7 @@ const Bartender: React.FC = () => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="CÓDIGO ALFANUMÉRICO"
+                  placeholder="CÓDIGO NUMÉRICO"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   className="w-full px-6 py-6 bg-white border-2 border-gray-100 rounded-3xl text-2xl font-black text-center placeholder-gray-300 focus:border-black focus:outline-none transition-all shadow-sm"
@@ -421,7 +421,7 @@ const Bartender: React.FC = () => {
                               {drink.category || 'Sin categoría'} {drink.is_alcoholic ? '🍸' : '💧'}
                             </p>
                           </div>
-                          <span className="font-black text-lg">+{drink.points_value}</span>
+                          <span className="font-black text-lg">+{drink.points_value} pts</span>
                         </button>
                       ))}
                     </div>
