@@ -398,7 +398,7 @@ const Bartender: React.FC = () => {
                 {!showDrinkSelect ? (
                   <button
                     onClick={() => setShowDrinkSelect(true)}
-                    disabled={loading || guest.status !== 'active'}
+                    disabled={loading || guest.status === 'blocked'}
                     className="w-full bg-black text-white py-8 rounded-[2rem] font-black text-2xl shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
                   >
                     <GlassWater size={32} />
