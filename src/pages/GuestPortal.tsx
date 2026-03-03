@@ -86,8 +86,8 @@ const GuestPortal: React.FC = () => {
         <QRCodeModal
           guestName={selectedGuest.name}
           uniqueCode={selectedGuest.unique_code}
-          drinksConsumed={selectedGuest.drinks_consumed}
-          maxDrinks={selectedGuest.max_drinks}
+          pointsConsumed={selectedGuest.points_consumed}
+          pointsLimit={selectedGuest.points_limit}
           status={selectedGuest.status}
           onClose={() => setSelectedGuest(null)}
         />

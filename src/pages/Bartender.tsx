@@ -8,9 +8,9 @@ interface Guest {
   id: number;
   name: string;
   unique_code: string;
-  drinks_consumed: number;
-  max_drinks: number;
-  status: 'active' | 'blocked';
+  points_consumed: number;
+  points_limit: number;
+  status: 'active' | 'blocked' | 'cooldown';
 }
 
 const Bartender: React.FC = () => {
@@ -21,8 +21,14 @@ const Bartender: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [blockedMsg, setBlockedMsg] = useState('');
+  const [menu, setMenu] = useState<Array<{ id: number; name: string; points_value: number; category?: string }>>([]);
+  const [showDrinkSelect, setShowDrinkSelect] = useState(false);
 
   const { logout } = useAuth();
+
+  useEffect(() => {
+    api.get('/menu').then(res => setMenu(res.data)).catch(console.error);
+  }, []);
 
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
@@ -62,12 +68,15 @@ const Bartender: React.FC = () => {
     setGuest(null);
     setSuccessMsg('');
     setBlockedMsg('');
+    setShowDrinkSelect(false);
 
     try {
       const response = await api.get(`/bartender/guest/${codeToSearch}`);
       setGuest(response.data);
       if (response.data.status === 'blocked') {
         setBlockedMsg('LÍMITE ALCANZADO');
+      } else if (response.data.status === 'cooldown') {
+        setError('INVITADO EN COOLDOWN');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invitado no encontrado');
@@ -76,35 +85,45 @@ const Bartender: React.FC = () => {
     }
   };
 
-  const handleRegisterDrink = async () => {
+  const handleRegisterDrink = async (drinkId: number, pointsValue: number) => {
     if (!guest) return;
     setLoading(true);
+    setError('');
 
     try {
-      await api.post(`/bartender/drink/${guest.unique_code}`);
-      setSuccessMsg('¡BEBIDA REGISTRADA!');
+      const response = await api.post(`/bartender/drink`, {
+        guest_code: guest.unique_code,
+        drink_id: drinkId,
+        device_info: window.navigator.userAgent
+      });
+
+      setSuccessMsg('¡REGISTRADO!');
       
-      // Actualizar datos del invitado localmente para reflejar el cambio inmediato
+      const newPoints = guest.points_consumed + pointsValue;
+      const newStatus = response.data.guest_status;
+
       setGuest(prev => prev ? {
         ...prev,
-        drinks_consumed: prev.drinks_consumed + 1,
-        status: (prev.drinks_consumed + 1 >= prev.max_drinks) ? 'blocked' : 'active'
+        points_consumed: newPoints,
+        status: newStatus
       } : null);
 
-      if (guest.drinks_consumed + 1 >= guest.max_drinks) {
+      if (newStatus === 'blocked') {
         setTimeout(() => setBlockedMsg('LÍMITE ALCANZADO'), 1500);
       }
 
-      // Limpiar mensaje de éxito después de 2 segundos
-      setTimeout(() => setSuccessMsg(''), 2000);
+      setTimeout(() => {
+        setSuccessMsg('');
+        setShowDrinkSelect(false);
+      }, 2000);
 
-      // Feedback háptico si está disponible
       if (window.navigator.vibrate) {
         window.navigator.vibrate([100, 50, 100]);
       }
 
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al registrar bebida');
+      setError(err.response?.data?.message || 'Error al registrar');
+      setTimeout(() => setError(''), 3000);
     } finally {
       setLoading(false);
     }
@@ -221,7 +240,7 @@ const Bartender: React.FC = () => {
           <div className="space-y-8 animate-in zoom-in duration-300">
             <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-gray-100 text-center space-y-6 relative overflow-hidden">
               {successMsg && (
-                <div className="absolute inset-0 bg-green-500 flex flex-col items-center justify-center text-white animate-in zoom-in duration-200">
+                <div className="absolute inset-0 bg-green-500 flex flex-col items-center justify-center text-white animate-in zoom-in duration-200 z-20">
                   <CheckCircle2 size={80} className="mb-4" />
                   <span className="text-3xl font-black">{successMsg}</span>
                 </div>
@@ -235,29 +254,68 @@ const Bartender: React.FC = () => {
               </div>
 
               <div className="py-8 bg-gray-50 rounded-[2.5rem] space-y-2 border border-gray-100">
-                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Bebidas Restantes</p>
-                <p className="text-9xl font-black text-gray-900 leading-none tracking-tighter">
-                  {guest.max_drinks - guest.drinks_consumed}
+                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Puntos Restantes</p>
+                <p className="text-7xl font-black text-gray-900 leading-none tracking-tighter">
+                  {Math.max(0, guest.points_limit - guest.points_consumed)}
+                </p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                  Total consumido: {guest.points_consumed}/{guest.points_limit}
                 </p>
               </div>
 
               <div className="space-y-4">
-                <button
-                  onClick={handleRegisterDrink}
-                  disabled={loading}
-                  className="w-full bg-black text-white py-8 rounded-[2rem] font-black text-2xl shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3"
-                >
-                  <GlassWater size={32} />
-                  <span>REGISTRAR BEBIDA</span>
-                </button>
-                <button
-                  onClick={handleClear}
-                  className="w-full py-6 text-gray-400 font-bold tracking-widest uppercase hover:text-black transition-colors"
-                >
-                  CANCELAR
-                </button>
+                {!showDrinkSelect ? (
+                  <button
+                    onClick={() => setShowDrinkSelect(true)}
+                    disabled={loading || guest.status !== 'active'}
+                    className="w-full bg-black text-white py-8 rounded-[2rem] font-black text-2xl shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
+                  >
+                    <GlassWater size={32} />
+                    <span>SELECCIONAR BEBIDA</span>
+                  </button>
+                ) : (
+                  <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">Carta de Tragos</p>
+                    <div className="grid grid-cols-1 gap-2 max-h-[40vh] overflow-y-auto pr-1">
+                      {menu.map(drink => (
+                        <button
+                          key={drink.id}
+                          onClick={() => handleRegisterDrink(drink.id, drink.points_value)}
+                          disabled={loading}
+                          className="flex items-center justify-between p-4 bg-gray-50 hover:bg-black hover:text-white rounded-2xl transition-all border border-gray-100 text-left group"
+                        >
+                          <div>
+                            <p className="font-black text-sm uppercase leading-none">{drink.name}</p>
+                            <p className="text-[10px] font-bold text-gray-400 group-hover:text-white/60">{drink.category || 'Sin categoría'}</p>
+                          </div>
+                          <span className="font-black text-lg">+{drink.points_value}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setShowDrinkSelect(false)}
+                      className="w-full py-4 text-gray-400 font-bold tracking-widest uppercase hover:text-black"
+                    >
+                      VOLVER
+                    </button>
+                  </div>
+                )}
+                {!showDrinkSelect && (
+                  <button
+                    onClick={handleClear}
+                    className="w-full py-6 text-gray-400 font-bold tracking-widest uppercase hover:text-black transition-colors"
+                  >
+                    CANCELAR
+                  </button>
+                )}
               </div>
             </div>
+            {error && (
+              <div className="bg-red-50 text-red-600 p-6 rounded-3xl text-center font-bold flex items-center justify-center space-x-2 border-2 border-red-100 animate-in shake duration-300">
+                <AlertTriangle size={24} />
+                <span>{error.toUpperCase()}</span>
+              </div>
+            )}
           </div>
         )}
       </main>

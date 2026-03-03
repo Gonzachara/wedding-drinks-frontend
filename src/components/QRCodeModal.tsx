@@ -7,12 +7,12 @@ interface QRCodeModalProps {
   guestName: string;
   uniqueCode: string;
   onClose: () => void;
-  drinksConsumed?: number;
-  maxDrinks?: number;
-  status?: 'active' | 'blocked';
+  pointsConsumed?: number;
+  pointsLimit?: number;
+  status?: 'active' | 'blocked' | 'cooldown';
 }
 
-const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClose, drinksConsumed, maxDrinks, status }) => {
+const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClose, pointsConsumed, pointsLimit, status }) => {
   const [showMenu, setShowMenu] = useState(false);
 
   const downloadQR = () => {
@@ -48,10 +48,10 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClos
         <div className="text-center space-y-2 mb-8">
           <h3 className="text-2xl font-black text-gray-900 tracking-tight">{guestName.toUpperCase()}</h3>
           <p className="text-2xl text-gray-500 font-mono tracking-widest">{uniqueCode}</p>
-          {(typeof drinksConsumed === 'number' && typeof maxDrinks === 'number') && (
+          {(typeof pointsConsumed === 'number' && typeof pointsLimit === 'number') && (
             <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase
               bg-gray-100 text-gray-700">
-              {drinksConsumed}/{maxDrinks} tragos {status === 'blocked' ? '• LÍMITE' : ''}
+              {pointsConsumed}/{pointsLimit} puntos {status === 'blocked' ? '• LÍMITE' : status === 'cooldown' ? '• COOLDOWN' : ''}
             </div>
           )}
         </div>

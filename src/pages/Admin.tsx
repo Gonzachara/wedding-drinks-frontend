@@ -8,15 +8,17 @@ interface Guest {
   id: number;
   name: string;
   unique_code: string;
-  drinks_consumed: number;
-  max_drinks: number;
-  status: 'active' | 'blocked';
+  points_consumed: number;
+  points_limit: number;
+  status: 'active' | 'blocked' | 'cooldown';
+  category_name?: string;
 }
 
 interface ActivityItem {
   id: number;
   guest_name: string;
   action: string;
+  points_transacted: number;
   timestamp: string;
 }
 
@@ -37,11 +39,11 @@ const Admin: React.FC = () => {
   // Estados para formularios
   const [newGuestName, setNewGuestName] = useState('');
   const [bulkNames, setBulkNames] = useState('');
-  const [editGuest, setEditGuest] = useState({ id: 0, name: '', max_drinks: 4 });
-  const [globalLimit, setGlobalLimit] = useState(4);
+  const [editGuest, setEditGuest] = useState({ id: 0, name: '', points_limit: 100 });
+  const [globalLimit, setGlobalLimit] = useState(100);
   const [stats, setStats] = useState({ total: 0, consumed: 0, blocked: 0 });
-  const [menu, setMenu] = useState<Array<{ id: number; name: string; description?: string; category?: string }>>([]);
-  const [newDrink, setNewDrink] = useState({ name: '', description: '', category: '' });
+  const [menu, setMenu] = useState<Array<{ id: number; name: string; description?: string; category?: string; points_value: number }>>([]);
+  const [newDrink, setNewDrink] = useState({ name: '', description: '', category: '', points_value: 10 });
 
   const { logout } = useAuth();
 
@@ -83,10 +85,10 @@ const Admin: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Nombre', 'Codigo', 'Consumido', 'Limite', 'Estado'];
+    const headers = ['Nombre', 'Codigo', 'Consumido', 'Limite', 'Estado', 'Categoria'];
     const csvContent = [
       headers.join(','),
-      ...guests.map(g => `${g.name},${g.unique_code},${g.drinks_consumed},${g.max_drinks},${g.status}`)
+      ...guests.map(g => `${g.name},${g.unique_code},${g.points_consumed},${g.points_limit},${g.status},${g.category_name || ''}`)
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -107,7 +109,7 @@ const Admin: React.FC = () => {
 
     try {
       setLoading(true);
-      await api.post('/guests/bulk', { names: namesArray, max_drinks: globalLimit });
+      await api.post('/guests/bulk', { names: namesArray, points_limit: globalLimit });
       setBulkNames('');
       setShowBulkModal(false);
       fetchGuests();
@@ -120,7 +122,7 @@ const Admin: React.FC = () => {
 
   const calculateStats = (data: Guest[]) => {
     const total = data.length;
-    const consumed = data.reduce((acc, curr) => acc + curr.drinks_consumed, 0);
+    const consumed = data.reduce((acc, curr) => acc + curr.points_consumed, 0);
     const blocked = data.filter(g => g.status === 'blocked').length;
     setStats({ total, consumed, blocked });
   };
@@ -146,7 +148,7 @@ const Admin: React.FC = () => {
     try {
       await api.put(`/guests/${editGuest.id}`, {
         name: editGuest.name, 
-        max_drinks: editGuest.max_drinks 
+        points_limit: editGuest.points_limit 
       });
       setShowEditModal(false);
       fetchGuests();
@@ -157,9 +159,9 @@ const Admin: React.FC = () => {
 
   const handleGlobalLimit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm(`¿Seguro quieres cambiar el límite a ${globalLimit} tragos para TODOS los invitados?`)) return;
+    if (!window.confirm(`¿Seguro quieres cambiar el límite a ${globalLimit} puntos para TODOS los invitados?`)) return;
     try {
-      await api.put('/guests/admin/global-limit', { max_drinks: globalLimit });
+      await api.put('/guests/admin/global-limit', { points_limit: globalLimit });
       setShowGlobalModal(false);
       fetchGuests();
     } catch (err) {
@@ -198,7 +200,7 @@ const Admin: React.FC = () => {
         description: newDrink.description?.trim() || undefined,
         category: newDrink.category?.trim() || undefined
       });
-      setNewDrink({ name: '', description: '', category: '' });
+      setNewDrink({ name: '', description: '', category: '', points_value: 10 });
       fetchMenu();
     } catch (err) {
       console.error('Error adding drink', err);
@@ -253,11 +255,11 @@ const Admin: React.FC = () => {
             <p className="text-xl font-black dark:text-white">{stats.total}</p>
           </div>
           <div className="bg-white dark:bg-white/5 p-4 rounded-3xl border border-gray-100 dark:border-white/10 shadow-sm text-center">
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Tragos</p>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Puntos</p>
             <p className="text-xl font-black dark:text-white">{stats.consumed}</p>
           </div>
           <div className="bg-white dark:bg-white/5 p-4 rounded-3xl border border-gray-100 dark:border-white/10 shadow-sm text-center">
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bajo Límite</p>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bloqueados</p>
             <p className="text-xl font-black text-red-600">{stats.blocked}</p>
           </div>
         </div>
@@ -329,9 +331,14 @@ const Admin: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-3 mt-2">
                     <span className="text-[10px] font-mono bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-md text-gray-500 dark:text-gray-400 font-bold">#{guest.unique_code}</span>
-                    <span className={`text-xs font-black ${guest.drinks_consumed >= guest.max_drinks ? 'text-red-600' : 'text-gray-400'}`}>
-                      {guest.drinks_consumed}/{guest.max_drinks} TRAGOS
+                    <span className={`text-xs font-black ${guest.points_consumed >= guest.points_limit ? 'text-red-600' : 'text-gray-400'}`}>
+                      {guest.points_consumed}/{guest.points_limit} PUNTOS
                     </span>
+                    {guest.category_name && (
+                      <span className="text-[10px] font-black uppercase bg-black dark:bg-white text-white dark:text-black px-2 py-1 rounded-md tracking-tighter">
+                        {guest.category_name}
+                      </span>
+                    )}
                   </div>
                 </div>
                 
@@ -344,7 +351,7 @@ const Admin: React.FC = () => {
                   </button>
                   <button 
                     onClick={() => {
-                      setEditGuest({ id: guest.id, name: guest.name, max_drinks: guest.max_drinks });
+                      setEditGuest({ id: guest.id, name: guest.name, points_limit: guest.points_limit });
                       setShowEditModal(true);
                     }}
                     className="p-3 text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 rounded-2xl"
@@ -475,11 +482,11 @@ const Admin: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Límite de Tragos</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Límite de Puntos</label>
                 <div className="flex items-center space-x-4 mt-2">
-                  <button type="button" onClick={() => setEditGuest({...editGuest, max_drinks: Math.max(1, editGuest.max_drinks - 1)})} className="w-12 h-12 bg-gray-100 dark:bg-white/10 rounded-xl font-black text-xl dark:text-white">-</button>
-                  <span className="flex-1 text-center text-3xl font-black dark:text-white">{editGuest.max_drinks}</span>
-                  <button type="button" onClick={() => setEditGuest({...editGuest, max_drinks: editGuest.max_drinks + 1})} className="w-12 h-12 bg-gray-100 dark:bg-white/10 rounded-xl font-black text-xl dark:text-white">+</button>
+                  <button type="button" onClick={() => setEditGuest({...editGuest, points_limit: Math.max(0, editGuest.points_limit - 10)})} className="w-12 h-12 bg-gray-100 dark:bg-white/10 rounded-xl font-black text-xl dark:text-white">-10</button>
+                  <span className="flex-1 text-center text-3xl font-black dark:text-white">{editGuest.points_limit}</span>
+                  <button type="button" onClick={() => setEditGuest({...editGuest, points_limit: editGuest.points_limit + 10})} className="w-12 h-12 bg-gray-100 dark:bg-white/10 rounded-xl font-black text-xl dark:text-white">+10</button>
                 </div>
               </div>
               <div className="flex space-x-3 pt-4">
@@ -496,12 +503,12 @@ const Admin: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-t-[3rem] md:rounded-[3rem] w-full max-w-md p-8 animate-in slide-in-from-bottom duration-300">
             <h3 className="text-2xl font-black mb-2 uppercase dark:text-white">Límite Global</h3>
-            <p className="text-gray-400 text-sm mb-6 font-medium leading-tight">Cambia el límite para TODOS los invitados de la fiesta.</p>
+            <p className="text-gray-400 text-sm mb-6 font-medium leading-tight">Cambia el límite de puntos para TODOS los invitados de la fiesta.</p>
             <form onSubmit={handleGlobalLimit} className="space-y-6">
               <div className="flex items-center space-x-4">
-                <button type="button" onClick={() => setGlobalLimit(Math.max(1, globalLimit - 1))} className="w-16 h-16 bg-gray-100 dark:bg-white/10 rounded-2xl font-black text-2xl dark:text-white">-</button>
+                <button type="button" onClick={() => setGlobalLimit(Math.max(0, globalLimit - 10))} className="w-16 h-16 bg-gray-100 dark:bg-white/10 rounded-2xl font-black text-2xl dark:text-white">-10</button>
                 <span className="flex-1 text-center text-5xl font-black dark:text-white">{globalLimit}</span>
-                <button type="button" onClick={() => setGlobalLimit(globalLimit + 1)} className="w-16 h-16 bg-gray-100 dark:bg-white/10 rounded-2xl font-black text-2xl dark:text-white">+</button>
+                <button type="button" onClick={() => setGlobalLimit(globalLimit + 10)} className="w-16 h-16 bg-gray-100 dark:bg-white/10 rounded-2xl font-black text-2xl dark:text-white">+10</button>
               </div>
               <div className="flex space-x-3 pt-4">
                 <button type="button" onClick={() => setShowGlobalModal(false)} className="flex-1 py-5 font-black text-gray-400 uppercase tracking-widest">Cerrar</button>
@@ -568,8 +575,8 @@ const Admin: React.FC = () => {
         <QRCodeModal
           guestName={guestForQR.name}
           uniqueCode={guestForQR.unique_code}
-          drinksConsumed={guestForQR.drinks_consumed}
-          maxDrinks={guestForQR.max_drinks}
+          pointsConsumed={guestForQR.points_consumed}
+          pointsLimit={guestForQR.points_limit}
           status={guestForQR.status}
           onClose={() => setGuestForQR(null)}
         />
