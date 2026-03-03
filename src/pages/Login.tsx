@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { GlassWater, Lock, UserRound } from 'lucide-react';
@@ -12,6 +12,8 @@ const Login: React.FC = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const showSetup = new URLSearchParams(location.search).get('setup') === '1';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +33,27 @@ const Login: React.FC = () => {
       login(token);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al iniciar sesión');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterAdmin = async () => {
+    setError('');
+    const user = username.trim();
+    const pass = password.trim();
+    if (!user || !pass) {
+      setError('Ingresa usuario y contraseña para crear el admin');
+      return;
+    }
+    try {
+      setLoading(true);
+      await api.post('/auth/register', { username: user, password: pass, role: 'admin' });
+      const response = await api.post('/auth/login', { username: user, password: pass });
+      const { token } = response.data;
+      login(token);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'No se pudo crear el admin');
     } finally {
       setLoading(false);
     }
@@ -102,6 +125,23 @@ const Login: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {showSetup && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={handleRegisterAdmin}
+              disabled={loading}
+              className="w-full py-3 px-4 mt-2 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-95"
+              title="Crear usuario ADMIN si no existe"
+            >
+              {loading ? 'Creando admin...' : 'Crear Admin con estas credenciales'}
+            </button>
+            <p className="text-[10px] text-gray-400 text-center mt-2">
+              Solo visible con ?setup=1 en la URL.
+            </p>
+          </div>
+        )}
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
