@@ -31,10 +31,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
 
-        const decodedUser = JSON.parse(jsonPayload);
+        const decodedUser = JSON.parse(jsonPayload) as any;
 
         // Verificamos si el token ha expirado
-        if (decodedUser.exp * 1000 > Date.now()) {
+        if (decodedUser.exp && decodedUser.exp * 1000 > Date.now()) {
           setUser(decodedUser);
         } else {
           localStorage.removeItem('token');
