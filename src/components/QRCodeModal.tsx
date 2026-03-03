@@ -17,6 +17,7 @@ interface QRCodeModalProps {
 const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClose, pointsConsumed, pointsLimit, status }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [history, setHistory] = useState<Array<{ id: number; drink_name: string; points: number; timestamp: string }>>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const { socket } = useSocket();
 
   useEffect(() => {
@@ -109,26 +110,43 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClos
           </button>
           {showMenu && <MenuModal onClose={() => setShowMenu(false)} />}
           
-          <div className="mt-2 bg-gray-50 border border-gray-100 rounded-2xl p-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <History size={18} className="text-gray-500" />
-              <span className="text-xs font-black uppercase tracking-widest text-gray-500">Historial reciente</span>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="flex items-center justify-center space-x-2 bg-white border-2 border-gray-100 text-gray-900 py-4 rounded-2xl font-bold hover:bg-gray-50 transition-all active:scale-95"
+          >
+            <History size={20} />
+            <span>Historial</span>
+          </button>
+        </div>
+      </div>
+
+      {showHistory && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-black uppercase tracking-widest text-sm">Historial de {guestName}</h4>
+              <button onClick={() => setShowHistory(false)} className="p-2 text-gray-400 hover:text-black">
+                <X size={20} />
+              </button>
             </div>
             {history.length === 0 ? (
-              <p className="text-xs text-gray-400">Sin movimientos aún.</p>
+              <p className="text-sm text-gray-500">Sin movimientos aún.</p>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                 {history.map(h => (
-                  <div key={h.id} className="flex items-center justify-between text-sm bg-white rounded-xl px-3 py-2 border border-gray-100">
-                    <span className="font-bold">{h.drink_name || 'Bebida'}</span>
-                    <span className="text-gray-500 text-xs">+{h.points} pts</span>
+                  <div key={h.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                    <div>
+                      <p className="font-bold">{h.drink_name || 'Bebida'}</p>
+                      <p className="text-xs text-gray-500">{new Date(h.timestamp).toLocaleString()}</p>
+                    </div>
+                    <span className="font-black text-gray-700">+{h.points} pts</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

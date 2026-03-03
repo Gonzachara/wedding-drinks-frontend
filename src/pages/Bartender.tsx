@@ -72,11 +72,27 @@ const Bartender: React.FC = () => {
           setBlockedMsg('');
         }
       });
+      socket.on('guest_status_update', (payload: any) => {
+        if (!guest) return;
+        if (payload.guest_code === guest.unique_code) {
+          // Actualizar estado y puntos en tiempo real
+          setGuest(prev => prev ? { ...prev, status: payload.status, points_consumed: payload.points_consumed, points_limit: payload.points_limit } : prev);
+          if (payload.status !== 'active') {
+            setShowDrinkSelect(false);
+            setError(payload.status === 'blocked' ? 'LÍMITE ALCANZADO' : 'INVITADO EN COOLDOWN');
+          } else {
+            setError('');
+          }
+        }
+      });
     }
     return () => {
-      if (socket) socket.off('emergency_mode_update');
+      if (socket) {
+        socket.off('emergency_mode_update');
+        socket.off('guest_status_update');
+      }
     };
-  }, [socket]);
+  }, [socket, guest]);
 
   useEffect(() => {
     if (isOnline && offlineQueue.length > 0) {
@@ -398,7 +414,7 @@ const Bartender: React.FC = () => {
                 {!showDrinkSelect ? (
                   <button
                     onClick={() => setShowDrinkSelect(true)}
-                    disabled={loading || guest.status === 'blocked'}
+                    disabled={loading || guest.status !== 'active'}
                     className="w-full bg-black text-white py-8 rounded-[2rem] font-black text-2xl shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
                   >
                     <GlassWater size={32} />
