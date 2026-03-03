@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import QRCodeModal from '../components/QRCodeModal';
 import GlobalSettings from '../components/GlobalSettings';
 import { Link } from 'react-router-dom';
-import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Ban, Edit2, Settings, ListPlus, History, Download, LayoutDashboard, Users, Coffee, Presentation } from 'lucide-react';
+import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Ban, Edit2, Settings, ListPlus, History, Download, LayoutDashboard, Users, Martini, Presentation } from 'lucide-react';
 
 interface Guest {
   id: number;
@@ -129,6 +129,13 @@ const Admin: React.FC = () => {
     fetchCategories();
   }, []);
 
+  // Cargar menú al abrir la pestaña
+  useEffect(() => {
+    if (activeTab === 'menu') {
+      fetchMenu();
+    }
+  }, [activeTab]);
+
   const handleAddGuest = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -245,7 +252,7 @@ const Admin: React.FC = () => {
             <Presentation size={20} />
             <span>Modo Pantalla</span>
           </Link>
-          <TabButton active={activeTab === 'menu'} onClick={() => setActiveTab('menu')} icon={<Coffee size={20} />} label="Menú" />
+          <TabButton active={activeTab === 'menu'} onClick={() => { setActiveTab('menu'); }} icon={<Martini size={20} />} label="Menú" />
           <TabButton active={activeTab === 'history'} onClick={() => { fetchActivity(); setActiveTab('history'); }} icon={<History size={20} />} label="Historial" />
           <TabButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<Settings size={20} />} label="Ajustes" />
         </nav>
@@ -379,7 +386,7 @@ const Admin: React.FC = () => {
   <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 flex justify-between items-center z-30">
     <button onClick={() => setActiveTab('guests')} className={`p-2 ${activeTab === 'guests' ? 'text-black' : 'text-gray-300'}`}><Users size={24} /></button>
     <Link to="/dashboard" className="p-2 text-gray-300"><LayoutDashboard size={24} /></Link>
-    <button onClick={() => setActiveTab('menu')} className={`p-2 ${activeTab === 'menu' ? 'text-black' : 'text-gray-300'}`}><Coffee size={24} /></button>
+    <button onClick={() => { setActiveTab('menu'); }} className={`p-2 ${activeTab === 'menu' ? 'text-black' : 'text-gray-300'}`}><Martini size={24} /></button>
     <button onClick={() => setActiveTab('settings')} className={`p-2 ${activeTab === 'settings' ? 'text-black' : 'text-gray-300'}`}><Settings size={24} /></button>
   </nav>
 </div>
