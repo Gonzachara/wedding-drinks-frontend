@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { LogOut, QrCode, Search, GlassWater, AlertTriangle, CheckCircle2, XCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface Guest {
   id: number;
@@ -89,7 +88,7 @@ const Bartender: React.FC = () => {
     if (offlineQueue.length === 0) return;
     try {
       const response = await api.post('/sync', { transactions: offlineQueue });
-      const { synced, conflicts, errors } = response.data;
+      const { synced, conflicts } = response.data;
       
       const newQueue = offlineQueue.filter(tx => !synced.includes(tx.id) && !conflicts.some((c: any) => c.id === tx.id));
       setOfflineQueue(newQueue);

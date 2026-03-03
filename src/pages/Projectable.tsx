@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
-import { GlassWater, TrendingUp, Trophy } from 'lucide-react';
+import { GlassWater, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ProjectableData {

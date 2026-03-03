@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import QRCodeModal from '../components/QRCodeModal';
 import GlobalSettings from '../components/GlobalSettings';
 import { Link } from 'react-router-dom';
-import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Ban, Edit2, Settings, ListPlus, History, Download, LayoutDashboard, Users, UserCog, Coffee, BarChart3, Presentation } from 'lucide-react';
+import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Ban, Edit2, Settings, ListPlus, History, Download, LayoutDashboard, Users, Coffee, Presentation } from 'lucide-react';
 
 interface Guest {
   id: number;
@@ -27,19 +27,17 @@ interface ActivityItem {
 const Admin: React.FC = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'guests' | 'menu' | 'settings' | 'history'>('guests');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showGlobalModal, setShowGlobalModal] = useState(false);
   const [guestForQR, setGuestForQR] = useState<Guest | null>(null);
   
   // Estados para formularios
-  const [newGuestName, setNewGuestName] = useState('');
   const [bulkNames, setBulkNames] = useState('');
-  const [editGuest, setEditGuest] = useState({ id: 0, name: '', points_limit: 100 });
+  const [globalLimit, setGlobalLimit] = useState(100);
   const [stats, setStats] = useState({ total: 0, consumed: 0, blocked: 0 });
   const [menu, setMenu] = useState<Array<{ id: number; name: string; description?: string; category?: string; points_value: number; is_alcoholic: boolean }>>([]);
   const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
@@ -60,20 +58,11 @@ const Admin: React.FC = () => {
 
   const fetchGuests = async () => {
     try {
-      setError('');
       const response = await api.get('/guests');
       setGuests(response.data);
       calculateStats(response.data);
     } catch (err) {
-      const anyErr: any = err;
-      const status = anyErr?.response?.status;
-      if (status === 401 || status === 403) {
-        setError('Tu sesión expiró. Vuelve a iniciar sesión.');
-      } else {
-        setError('Error del servidor al cargar invitados.');
-      }
-    } finally {
-      setLoading(false);
+      console.error('Error al cargar invitados', err);
     }
   };
 
@@ -119,15 +108,12 @@ const Admin: React.FC = () => {
     if (namesArray.length === 0) return;
 
     try {
-      setLoading(true);
       await api.post('/guests/bulk', { names: namesArray, points_limit: globalLimit });
       setBulkNames('');
       setShowBulkModal(false);
       fetchGuests();
     } catch (err) {
       console.error('Error in bulk import', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -216,7 +202,7 @@ const Admin: React.FC = () => {
         description: newDrink.description?.trim() || undefined,
         category: newDrink.category?.trim() || undefined
       });
-      setNewDrink({ name: '', description: '', category: '', points_value: 10 });
+      setNewDrink({ name: '', description: '', category: '', points_value: 10, is_alcoholic: true });
       fetchMenu();
     } catch (err) {
       console.error('Error adding drink', err);
@@ -402,7 +388,8 @@ const Admin: React.FC = () => {
 {showAddModal && <AddGuestModal onClose={() => setShowAddModal(false)} onSave={handleAddGuest} guest={newGuest} setGuest={setNewGuest} categories={categories} />}
 {showBulkModal && <BulkImportModal onClose={() => setShowBulkModal(false)} onSave={handleBulkImport} names={bulkNames} setNames={setBulkNames} />}
 {showEditModal && <EditGuestModal onClose={() => setShowEditModal(false)} onSave={handleUpdateGuest} guest={editGuestData} setGuest={setEditGuestData} categories={categories} />}
-      {guestForQR && (
+{showGlobalModal && <GlobalLimitModal onClose={() => setShowGlobalModal(false)} onSave={handleGlobalLimit} limit={globalLimit} setLimit={setGlobalLimit} />}
+{guestForQR && (
         <QRCodeModal
           guestName={guestForQR.name}
           uniqueCode={guestForQR.unique_code}
@@ -522,6 +509,28 @@ const EditGuestModal: React.FC<{ onClose: () => void; onSave: (e: React.FormEven
         <div className="flex space-x-3 pt-4">
           <button type="button" onClick={onClose} className="flex-1 py-5 font-black text-gray-400 uppercase text-xs tracking-widest">Cancelar</button>
           <button type="submit" className="flex-1 py-5 bg-black text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">Actualizar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+);
+
+const GlobalLimitModal: React.FC<{ onClose: () => void; onSave: (e: React.FormEvent) => void; limit: number; setLimit: (v: number) => void }> = ({ onClose, onSave, limit, setLimit }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="bg-white rounded-[3rem] w-full max-w-md p-8">
+      <h3 className="text-2xl font-black mb-6 uppercase">Límite Global</h3>
+      <form onSubmit={onSave} className="space-y-6">
+        <div>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Límite para todos</label>
+          <div className="flex items-center space-x-4 mt-2">
+            <button type="button" onClick={() => setLimit(Math.max(0, limit - 10))} className="w-12 h-12 bg-gray-50 rounded-xl font-black">-10</button>
+            <span className="flex-1 text-center text-3xl font-black">{limit}</span>
+            <button type="button" onClick={() => setLimit(limit + 10)} className="w-12 h-12 bg-gray-50 rounded-xl font-black">+10</button>
+          </div>
+        </div>
+        <div className="flex space-x-3 pt-4">
+          <button type="button" onClick={onClose} className="flex-1 py-5 font-black text-gray-400 uppercase text-xs tracking-widest">Cancelar</button>
+          <button type="submit" className="flex-1 py-5 bg-black text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">Aplicar</button>
         </div>
       </form>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Settings, Shield, Clock, Coins, Layout, Save, AlertCircle } from 'lucide-react';
+import { Settings, Shield, Clock, Coins, AlertCircle } from 'lucide-react';
 
 interface Setting {
   setting_key: string;
