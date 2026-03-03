@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import QRCodeModal from '../components/QRCodeModal';
-import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Users, Ban, PieChart } from 'lucide-react';
+import { LogOut, UserPlus, RefreshCw, Trash2, Search, QrCode, GlassWater, Users, Ban, Edit2, Settings, ChevronRight } from 'lucide-react';
 
 interface Guest {
   id: number;
@@ -17,9 +17,16 @@ const Admin: React.FC = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [newGuestName, setNewGuestName] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showGlobalModal, setShowGlobalModal] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  const [guestForQR, setGuestForQR] = useState<Guest | null>(null);
+  
+  // Estados para formularios
+  const [newGuestName, setNewGuestName] = useState('');
+  const [editGuest, setEditGuest] = useState({ id: 0, name: '', max_drinks: 4 });
+  const [globalLimit, setGlobalLimit] = useState(4);
   const [stats, setStats] = useState({ total: 0, consumed: 0, blocked: 0 });
 
   const { logout } = useAuth();
@@ -59,8 +66,34 @@ const Admin: React.FC = () => {
     }
   };
 
+  const handleUpdateGuest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.put(`/guests/${editGuest.id}`, { 
+        name: editGuest.name, 
+        max_drinks: editGuest.max_drinks 
+      });
+      setShowEditModal(false);
+      fetchGuests();
+    } catch (err) {
+      console.error('Error updating guest', err);
+    }
+  };
+
+  const handleGlobalLimit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!window.confirm(`¿Seguro quieres cambiar el límite a ${globalLimit} tragos para TODOS los invitados?`)) return;
+    try {
+      await api.put('/guests/admin/global-limit', { max_drinks: globalLimit });
+      setShowGlobalModal(false);
+      fetchGuests();
+    } catch (err) {
+      console.error('Error updating global limit', err);
+    }
+  };
+
   const handleResetDrinks = async (id: number) => {
-    if (window.confirm('¿Estás seguro de resetear el consumo de este invitado?')) {
+    if (window.confirm('¿Resetear consumo de este invitado?')) {
       try {
         await api.put(`/guests/reset/${id}`);
         fetchGuests();
@@ -71,7 +104,7 @@ const Admin: React.FC = () => {
   };
 
   const handleDeleteGuest = async (id: number) => {
-    if (window.confirm('¿Estás seguro de eliminar a este invitado?')) {
+    if (window.confirm('¿Eliminar invitado?')) {
       try {
         await api.delete(`/guests/${id}`);
         fetchGuests();
@@ -87,204 +120,205 @@ const Admin: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 py-4 px-6 flex justify-between items-center sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-20 md:pb-0">
+      {/* Header Fijo */}
+      <header className="bg-white border-b border-gray-100 py-4 px-6 flex justify-between items-center sticky top-0 z-30">
         <div className="flex items-center space-x-2">
           <div className="bg-black text-white p-2 rounded-lg">
-            <GlassWater size={24} />
+            <GlassWater size={20} />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">Admin Dashboard</h1>
+          <h1 className="text-lg font-black tracking-tight uppercase">Admin</h1>
         </div>
-        <button 
-          onClick={logout}
-          className="flex items-center space-x-2 text-gray-500 hover:text-black transition-colors"
-        >
-          <LogOut size={20} />
-          <span className="text-sm font-medium">Salir</span>
-        </button>
-      </header>
-
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full space-y-8">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Users size={24} /></div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Total Invitados</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
-            <div className="p-3 bg-green-50 text-green-600 rounded-xl"><GlassWater size={24} /></div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Bebidas Consumidas</p>
-              <p className="text-2xl font-bold">{stats.consumed}</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
-            <div className="p-3 bg-red-50 text-red-600 rounded-xl"><Ban size={24} /></div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Invitados Bloqueados</p>
-              <p className="text-2xl font-bold">{stats.blocked}</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl"><PieChart size={24} /></div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Promedio Consumo</p>
-              <p className="text-2xl font-bold">{(stats.consumed / (stats.total || 1)).toFixed(1)}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Actions & Search */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-96">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-              <Search size={20} />
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar por nombre o código..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
-            />
-          </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="w-full md:w-auto flex items-center justify-center space-x-2 bg-black text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition-all active:scale-95 shadow-lg"
-          >
-            <UserPlus size={20} />
-            <span>AGREGAR INVITADO</span>
+        <div className="flex items-center space-x-4">
+          <button onClick={() => setShowGlobalModal(true)} className="p-2 text-gray-400 hover:text-black">
+            <Settings size={22} />
+          </button>
+          <button onClick={logout} className="p-2 text-gray-400 hover:text-red-600">
+            <LogOut size={22} />
           </button>
         </div>
+      </header>
 
-        {/* Guest List */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
-                <tr>
-                  <th className="px-6 py-4">Nombre</th>
-                  <th className="px-6 py-4">Bebidas</th>
-                  <th className="px-6 py-4">Estado</th>
-                  <th className="px-6 py-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {loading ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                      Cargando invitados...
-                    </td>
-                  </tr>
-                ) : filteredGuests.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                      No se encontraron invitados.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredGuests.map(guest => (
-                    <tr key={guest.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-gray-900">{guest.name}</p>
-                        <p className="text-xs text-gray-400 font-mono mt-1">{guest.unique_code}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <span className={`text-lg font-bold ${guest.status === 'blocked' ? 'text-red-600' : 'text-gray-900'}`}>
-                            {guest.drinks_consumed}
-                          </span>
-                          <span className="text-gray-300">/</span>
-                          <span className="text-gray-500">{guest.max_drinks}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                          guest.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                          {guest.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end space-x-2">
-                          <button 
-                            onClick={() => setSelectedGuest(guest)}
-                            className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                            title="Ver código QR"
-                          >
-                            <QrCode size={18} />
-                          </button>
-                          <button 
-                            onClick={() => handleResetDrinks(guest.id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Resetear consumo"
-                          >
-                            <RefreshCw size={18} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteGuest(guest.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Eliminar invitado"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      <main className="flex-1 p-4 max-w-4xl mx-auto w-full space-y-6">
+        {/* Stats - Compactas para mobile */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Total</p>
+            <p className="text-xl font-black">{stats.total}</p>
           </div>
+          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Tragos</p>
+            <p className="text-xl font-black">{stats.consumed}</p>
+          </div>
+          <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bajo Límite</p>
+            <p className="text-xl font-black text-red-600">{stats.blocked}</p>
+          </div>
+        </div>
+
+        {/* Buscador */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+            <Search size={18} />
+          </div>
+          <input
+            type="text"
+            placeholder="BUSCAR NOMBRE O CÓDIGO..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-12 pr-4 py-4 bg-white border-2 border-gray-100 rounded-3xl text-sm font-bold placeholder-gray-300 focus:border-black focus:outline-none transition-all"
+          />
+        </div>
+
+        {/* Lista de Invitados (Cards) */}
+        <div className="space-y-3">
+          {loading ? (
+            <div className="py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">Cargando...</div>
+          ) : filteredGuests.length === 0 ? (
+            <div className="py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No hay resultados</div>
+          ) : (
+            filteredGuests.map(guest => (
+              <div key={guest.id} className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-black text-gray-900 text-lg uppercase leading-none">{guest.name}</h3>
+                    {guest.status === 'blocked' && <Ban size={14} className="text-red-600" />}
+                  </div>
+                  <div className="flex items-center space-x-3 mt-2">
+                    <span className="text-[10px] font-mono bg-gray-100 px-2 py-1 rounded-md text-gray-500 font-bold">#{guest.unique_code}</span>
+                    <span className={`text-xs font-black ${guest.drinks_consumed >= guest.max_drinks ? 'text-red-600' : 'text-gray-400'}`}>
+                      {guest.drinks_consumed}/{guest.max_drinks} TRAGOS
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-1">
+                  <button 
+                    onClick={() => setGuestForQR(guest)}
+                    className="p-3 text-gray-400 hover:bg-gray-50 rounded-2xl"
+                  >
+                    <QrCode size={20} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setEditGuest({ id: guest.id, name: guest.name, max_drinks: guest.max_drinks });
+                      setShowEditModal(true);
+                    }}
+                    className="p-3 text-gray-400 hover:bg-gray-50 rounded-2xl"
+                  >
+                    <Edit2 size={20} />
+                  </button>
+                  <button 
+                    onClick={() => handleResetDrinks(guest.id)}
+                    className="p-3 text-blue-400 hover:bg-blue-50 rounded-2xl"
+                  >
+                    <RefreshCw size={20} />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteGuest(guest.id)}
+                    className="p-3 text-red-300 hover:bg-red-50 rounded-2xl"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </main>
 
-      {/* Add Modal */}
+      {/* Botón Flotante Agregar (Solo Mobile) */}
+      <button
+        onClick={() => setShowAddModal(true)}
+        className="fixed bottom-6 right-6 w-16 h-16 bg-black text-white rounded-full shadow-2xl flex items-center justify-center z-40 active:scale-90 transition-transform md:hidden"
+      >
+        <UserPlus size={28} />
+      </button>
+
+      {/* Modal Agregar */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold mb-4">Nuevo Invitado</h3>
-            <form onSubmit={handleAddGuest} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-                <input
-                  type="text"
-                  required
-                  value={newGuestName}
-                  onChange={(e) => setNewGuestName(e.target.value)}
-                  className="block w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-black transition-all"
-                  placeholder="Ej: María García"
-                />
-              </div>
-              <div className="flex space-x-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-3 px-4 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-all"
-                >
-                  CANCELAR
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 px-4 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all active:scale-95"
-                >
-                  GUARDAR
-                </button>
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-t-[3rem] md:rounded-[3rem] w-full max-w-md p-8 animate-in slide-in-from-bottom duration-300">
+            <h3 className="text-2xl font-black mb-6 uppercase">Nuevo Invitado</h3>
+            <form onSubmit={handleAddGuest} className="space-y-6">
+              <input
+                type="text"
+                required
+                autoFocus
+                value={newGuestName}
+                onChange={(e) => setNewGuestName(e.target.value)}
+                className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent rounded-2xl text-lg font-bold focus:border-black focus:outline-none"
+                placeholder="NOMBRE COMPLETO"
+              />
+              <div className="flex space-x-3">
+                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-5 font-black text-gray-400 uppercase tracking-widest">Cancelar</button>
+                <button type="submit" className="flex-1 py-5 bg-black text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">Guardar</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Modal Editar Individual */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-t-[3rem] md:rounded-[3rem] w-full max-w-md p-8 animate-in slide-in-from-bottom duration-300">
+            <h3 className="text-2xl font-black mb-6 uppercase">Editar Invitado</h3>
+            <form onSubmit={handleUpdateGuest} className="space-y-6">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Nombre</label>
+                <input
+                  type="text"
+                  required
+                  value={editGuest.name}
+                  onChange={(e) => setEditGuest({...editGuest, name: e.target.value})}
+                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent rounded-2xl text-lg font-bold focus:border-black focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Límite de Tragos</label>
+                <div className="flex items-center space-x-4 mt-2">
+                  <button type="button" onClick={() => setEditGuest({...editGuest, max_drinks: Math.max(1, editGuest.max_drinks - 1)})} className="w-12 h-12 bg-gray-100 rounded-xl font-black text-xl">-</button>
+                  <span className="flex-1 text-center text-3xl font-black">{editGuest.max_drinks}</span>
+                  <button type="button" onClick={() => setEditGuest({...editGuest, max_drinks: editGuest.max_drinks + 1})} className="w-12 h-12 bg-gray-100 rounded-xl font-black text-xl">+</button>
+                </div>
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 py-5 font-black text-gray-400 uppercase tracking-widest">Cancelar</button>
+                <button type="submit" className="flex-1 py-5 bg-black text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">Actualizar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Límite Global */}
+      {showGlobalModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-t-[3rem] md:rounded-[3rem] w-full max-w-md p-8 animate-in slide-in-from-bottom duration-300">
+            <h3 className="text-2xl font-black mb-2 uppercase">Límite Global</h3>
+            <p className="text-gray-400 text-sm mb-6 font-medium leading-tight">Cambia el límite para TODOS los invitados de la fiesta.</p>
+            <form onSubmit={handleGlobalLimit} className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <button type="button" onClick={() => setGlobalLimit(Math.max(1, globalLimit - 1))} className="w-16 h-16 bg-gray-100 rounded-2xl font-black text-2xl">-</button>
+                <span className="flex-1 text-center text-5xl font-black">{globalLimit}</span>
+                <button type="button" onClick={() => setGlobalLimit(globalLimit + 1)} className="w-16 h-16 bg-gray-100 rounded-2xl font-black text-2xl">+</button>
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button type="button" onClick={() => setShowGlobalModal(false)} className="flex-1 py-5 font-black text-gray-400 uppercase tracking-widest">Cerrar</button>
+                <button type="submit" className="flex-1 py-5 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">Aplicar a todos</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* QR Modal */}
-      {selectedGuest && (
+      {guestForQR && (
         <QRCodeModal
-          guestName={selectedGuest.name}
-          uniqueCode={selectedGuest.unique_code}
-          onClose={() => setSelectedGuest(null)}
+          guestName={guestForQR.name}
+          uniqueCode={guestForQR.unique_code}
+          onClose={() => setGuestForQR(null)}
         />
       )}
     </div>
