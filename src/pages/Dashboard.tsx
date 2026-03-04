@@ -31,15 +31,14 @@ ChartJS.register(
 
 interface DashboardStats {
   total_drinks_served: number;
-  total_points_consumed: number;
   total_guests: number;
   blocked_guests: number;
   most_requested_drink: { name: string; times_served: number } | string;
-  average_points_per_guest: string;
+  average_drinks_per_guest: string;
   consumption_by_hour: Array<{ hour: number; drinks_served: number }>;
-  consumption_by_bar: Array<{ bar_name: string; total_drinks: number; total_points: number }>;
-  consumption_timeline: Array<{ minute: string; drinks_served: number; points_consumed: number }>;
-  consumption_by_category: Array<{ category_name: string; total_drinks: number; total_points: number }>;
+  consumption_by_bar: Array<{ bar_name: string; total_drinks: number }>;
+  consumption_timeline: Array<{ minute: string; drinks_served: number }>;
+  consumption_by_category: Array<{ category_name: string; total_drinks: number }>;
 }
 
 const Dashboard: React.FC = () => {
@@ -130,15 +129,15 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 space-y-8">
-      <header className="flex justify-between items-center">
+      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight">Dashboard</h1>
           <p className="text-gray-500 font-medium">Estadísticas en tiempo real del evento</p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <button 
             onClick={() => navigate('/admin')}
-            className="flex items-center space-x-2 border-2 border-gray-200 px-6 py-3 rounded-2xl font-bold uppercase text-sm tracking-widest hover:bg-gray-50"
+            className="flex items-center justify-center space-x-2 border-2 border-gray-200 px-4 sm:px-6 py-3 rounded-2xl font-bold uppercase text-sm tracking-widest hover:bg-gray-50 w-full md:w-auto"
           >
             <ArrowLeft size={18} />
             <span>Volver</span>
@@ -162,7 +161,7 @@ const Dashboard: React.FC = () => {
               }
             }}
             disabled={downloading}
-            className="flex items-center space-x-2 bg-black text-white px-6 py-3 rounded-2xl font-bold uppercase text-sm tracking-widest shadow-lg hover:scale-105 transition-transform disabled:opacity-50"
+            className="flex items-center justify-center space-x-2 bg-black text-white px-4 sm:px-6 py-3 rounded-2xl font-bold uppercase text-sm tracking-widest shadow-lg hover:scale-105 transition-transform disabled:opacity-50 w-full md:w-auto"
           >
             <Download size={18} />
             <span>{downloading ? 'Descargando...' : 'Reporte PDF'}</span>
@@ -179,14 +178,8 @@ const Dashboard: React.FC = () => {
           color="bg-blue-50 text-blue-600"
         />
         <StatCard 
-          title="Puntos Totales" 
-          value={stats.total_points_consumed} 
-          icon={<TrendingUp size={24} />} 
-          color="bg-green-50 text-green-600"
-        />
-        <StatCard 
-          title="Promedio/Invitado" 
-          value={stats.average_points_per_guest} 
+          title="Promedio Bebidas/Invitado" 
+          value={stats.average_drinks_per_guest} 
           icon={<Users size={24} />} 
           color="bg-purple-50 text-purple-600"
         />

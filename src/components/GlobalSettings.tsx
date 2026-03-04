@@ -110,11 +110,11 @@ const GlobalSettings: React.FC = () => {
           </p>
         </section>
 
-        {/* Default Points */}
+        {/* Default Drinks per Guest */}
         <section className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-4">
           <div className="flex items-center space-x-3 text-green-600">
             <Coins size={20} />
-            <h3 className="font-black uppercase text-sm">Puntos por Defecto</h3>
+            <h3 className="font-black uppercase text-sm">Bebidas por Defecto</h3>
           </div>
           <input
             type="number"
@@ -123,7 +123,7 @@ const GlobalSettings: React.FC = () => {
             className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl text-xl font-black focus:border-green-600 focus:outline-none"
           />
           <p className="text-[10px] text-gray-400 font-medium leading-tight">
-            Límite de puntos asignado automáticamente a nuevos invitados.
+            Límite de bebidas asignado automáticamente a nuevos invitados.
           </p>
         </section>
 

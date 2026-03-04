@@ -78,7 +78,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClos
           {(typeof pointsConsumed === 'number' && typeof pointsLimit === 'number') && (
             <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase
               bg-gray-100 text-gray-700">
-              {pointsConsumed}/{pointsLimit} puntos {status === 'blocked' ? '• LÍMITE' : status === 'cooldown' ? '• COOLDOWN' : ''}
+              {pointsConsumed}/{pointsLimit} bebidas {status === 'blocked' ? '• LÍMITE' : status === 'cooldown' ? '• COOLDOWN' : ''}
             </div>
           )}
         </div>
@@ -124,7 +124,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClos
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-black uppercase tracking-widest text-sm">Historial de {guestName}</h4>
+              <h4 className="font-black uppercase text-sm">Historial de {guestName}</h4>
               <button onClick={() => setShowHistory(false)} className="p-2 text-gray-400 hover:text-black">
                 <X size={20} />
               </button>
@@ -139,7 +139,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ guestName, uniqueCode, onClos
                       <p className="font-bold">{h.drink_name || 'Bebida'}</p>
                       <p className="text-xs text-gray-500">{new Date(h.timestamp).toLocaleString()}</p>
                     </div>
-                    <span className="font-black text-gray-700">+{h.points} pts</span>
+                    <span className="font-black text-gray-700">+1 bebida</span>
                   </div>
                 ))}
               </div>

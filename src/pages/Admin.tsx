@@ -85,7 +85,7 @@ const Admin: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Nombre', 'Codigo', 'Consumido', 'Limite', 'Estado', 'Categoria'];
+    const headers = ['Nombre', 'Codigo', 'Bebidas Consumidas', 'Máximo de Bebidas', 'Estado', 'Categoria'];
     const csvContent = [
       headers.join(','),
       ...guests.map(g => `${g.name},${g.unique_code},${g.points_consumed},${g.points_limit},${g.status},${g.category_name || ''}`)
@@ -169,7 +169,7 @@ const Admin: React.FC = () => {
 
   const handleGlobalLimit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm(`¿Seguro quieres cambiar el límite a ${globalLimit} puntos para TODOS los invitados?`)) return;
+    if (!window.confirm(`¿Seguro quieres cambiar el máximo de bebidas a ${globalLimit} para TODOS los invitados?`)) return;
     try {
       await api.put('/guests/admin/global-limit', { points_limit: globalLimit });
       setShowGlobalModal(false);
@@ -313,8 +313,8 @@ const Admin: React.FC = () => {
             <div className="bg-black text-white p-8 rounded-[2.5rem] space-y-6">
               <h3 className="font-black uppercase tracking-widest text-xs opacity-50">Resumen General</h3>
               <div className="grid grid-cols-2 gap-4">
-                <StatMini label="Total" value={stats.total} />
-                <StatMini label="Puntos" value={stats.consumed} />
+                <StatMini label="Total Invitados" value={stats.total} />
+                <StatMini label="Bebidas Servidas" value={stats.consumed} />
                 <StatMini label="Bloqueados" value={stats.blocked} color="text-red-400" />
               </div>
               <button onClick={() => setShowBulkModal(true)} className="w-full py-4 bg-white text-black rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center space-x-2">
@@ -336,9 +336,8 @@ const Admin: React.FC = () => {
         <h2 className="text-3xl font-black uppercase tracking-tight">Menú de Bebidas</h2>
         <form onSubmit={handleAddDrink} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
           <input type="text" value={newDrink.name} onChange={e => setNewDrink({...newDrink, name: e.target.value})} placeholder="Nombre" className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-black focus:outline-none" />
-          <div className="grid grid-cols-2 gap-4">
-            <input type="number" value={newDrink.points_value} onChange={e => setNewDrink({...newDrink, points_value: parseInt(e.target.value)})} className="p-4 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-black focus:outline-none" />
-            <select value={newDrink.is_alcoholic ? 'alcoholic' : 'non-alcoholic'} onChange={e => setNewDrink({...newDrink, is_alcoholic: e.target.value === 'alcoholic'})} className="p-4 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-black focus:outline-none">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <select value={newDrink.is_alcoholic ? 'alcoholic' : 'non-alcoholic'} onChange={e => setNewDrink({...newDrink, is_alcoholic: e.target.value === 'alcoholic'})} className="p-4 bg-gray-50 rounded-2xl font-bold border-2 border-transparent focus:border-black focus:outline-none">
               <option value="alcoholic">Con Alcohol</option>
               <option value="non-alcoholic">Sin Alcohol</option>
             </select>
@@ -351,7 +350,7 @@ const Admin: React.FC = () => {
             <div key={item.id} className="bg-white p-6 rounded-3xl border border-gray-100 flex items-center justify-between">
               <div>
                 <p className="font-black uppercase">{item.name}</p>
-                <p className="text-xs font-bold text-gray-400">{item.is_alcoholic ? 'CON ALCOHOL' : 'SIN ALCOHOL'} • {item.points_value} PUNTOS</p>
+                <p className="text-xs font-bold text-gray-400">{item.is_alcoholic ? 'CON ALCOHOL' : 'SIN ALCOHOL'}</p>
               </div>
               <button onClick={() => handleDeleteDrink(item.id)} className="p-3 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={20} /></button>
             </div>
@@ -442,11 +441,11 @@ const GuestCard: React.FC<{ guest: Guest; onQR: () => void; onEdit: () => void; 
       <div className="flex items-center space-x-3 mt-1">
         <span className="text-[10px] font-mono bg-gray-50 px-2 py-0.5 rounded text-gray-400">#{guest.unique_code}</span>
         <span className={`text-[10px] font-black ${guest.status === 'blocked' ? 'text-red-500' : 'text-gray-400'}`}>
-          {guest.points_consumed}/{guest.points_limit} PTS
+          {guest.points_consumed}/{guest.points_limit} bebidas
         </span>
       </div>
     </div>
-    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="flex items-center space-x-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
       <button onClick={onQR} className="p-2 text-gray-400 hover:text-black hover:bg-gray-50 rounded-xl"><QrCode size={18} /></button>
       <button onClick={onEdit} className="p-2 text-gray-400 hover:text-black hover:bg-gray-50 rounded-xl"><Edit2 size={18} /></button>
       <button onClick={onReset} className="p-2 text-blue-400 hover:bg-blue-50 rounded-xl"><RefreshCw size={18} /></button>
@@ -515,7 +514,7 @@ const EditGuestModal: React.FC<{ onClose: () => void; onSave: (e: React.FormEven
           </select>
         </div>
         <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Límite de Puntos</label>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Máximo de Bebidas</label>
           <div className="flex items-center space-x-4 mt-2">
             <button type="button" onClick={() => setGuest({...guest, points_limit: Math.max(0, guest.points_limit - 10)})} className="w-12 h-12 bg-gray-50 rounded-xl font-black">-10</button>
             <span className="flex-1 text-center text-3xl font-black">{guest.points_limit}</span>

@@ -182,7 +182,7 @@ const Bartender: React.FC = () => {
     setLoading(true);
     setError('');
 
-    const pointsValue = drink.points_value;
+    const pointsValue = 1;
 
     if (!isOnline) {
       const offlineTx: OfflineTransaction = {
@@ -326,7 +326,7 @@ const Bartender: React.FC = () => {
               <p className="text-gray-500 font-medium">Ingresa el código o usa la cámara</p>
             </div>
 
-            <div className="space-y-4">
+                  <div className="space-y-4">
               <div className="relative">
                 <input
                   type="text"
@@ -401,12 +401,12 @@ const Bartender: React.FC = () => {
               </div>
 
               <div className={`py-8 rounded-[2.5rem] space-y-2 border ${isWarning ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-100'}`}>
-                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Puntos Restantes</p>
+                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Bebidas Restantes</p>
                 <p className={`text-7xl font-black leading-none tracking-tighter ${isWarning ? 'text-yellow-700' : 'text-gray-900'}`}>
                   {pointsRemaining}
                 </p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                  Consumido: {guest.points_consumed}/{guest.points_limit}
+                  Consumido: {guest.points_consumed}/{guest.points_limit} bebidas
                 </p>
               </div>
 
@@ -437,7 +437,7 @@ const Bartender: React.FC = () => {
                               {drink.category || 'Sin categoría'} {drink.is_alcoholic ? '🍸' : '💧'}
                             </p>
                           </div>
-                          <span className="font-black text-lg">+{drink.points_value} pts</span>
+                          <span className="font-black text-lg">+1 bebida</span>
                         </button>
                       ))}
                     </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Martini, Sparkles } from 'lucide-react';
+import { X, Martini } from 'lucide-react';
 import api from '../services/api';
 
 interface Drink {
@@ -69,7 +69,7 @@ const MenuModal: React.FC<Props> = ({ onClose }) => {
                   {list.sort((a,b)=>a.name.localeCompare(b.name)).map(item => (
                     <div key={item.id} className="flex items-start space-x-3 bg-white/70 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl px-4 py-3">
                       <div className="p-2 bg-black text-white rounded-lg">
-                        <Sparkles size={16} />
+                        <Martini size={16} />
                       </div>
                       <div className="flex-1">
                         <p className="font-black text-gray-900 dark:text-white leading-tight">{item.name}</p>
