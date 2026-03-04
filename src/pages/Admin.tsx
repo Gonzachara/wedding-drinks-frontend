@@ -516,9 +516,9 @@ const EditGuestModal: React.FC<{ onClose: () => void; onSave: (e: React.FormEven
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Máximo de Bebidas</label>
           <div className="flex items-center space-x-4 mt-2">
-            <button type="button" onClick={() => setGuest({...guest, points_limit: Math.max(0, guest.points_limit - 10)})} className="w-12 h-12 bg-gray-50 rounded-xl font-black">-10</button>
+            <button type="button" onClick={() => setGuest({...guest, points_limit: Math.max(0, guest.points_limit - 1)})} className="w-12 h-12 bg-gray-50 rounded-xl font-black">-1</button>
             <span className="flex-1 text-center text-3xl font-black">{guest.points_limit}</span>
-            <button type="button" onClick={() => setGuest({...guest, points_limit: guest.points_limit + 10})} className="w-12 h-12 bg-gray-50 rounded-xl font-black">+10</button>
+            <button type="button" onClick={() => setGuest({...guest, points_limit: guest.points_limit + 1})} className="w-12 h-12 bg-gray-50 rounded-xl font-black">+1</button>
           </div>
         </div>
         <div className="flex space-x-3 pt-4">
@@ -538,9 +538,9 @@ const GlobalLimitModal: React.FC<{ onClose: () => void; onSave: (e: React.FormEv
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Límite para todos</label>
           <div className="flex items-center space-x-4 mt-2">
-            <button type="button" onClick={() => setLimit(Math.max(0, limit - 10))} className="w-12 h-12 bg-gray-50 rounded-xl font-black">-10</button>
+            <button type="button" onClick={() => setLimit(Math.max(0, limit - 1))} className="w-12 h-12 bg-gray-50 rounded-xl font-black">-1</button>
             <span className="flex-1 text-center text-3xl font-black">{limit}</span>
-            <button type="button" onClick={() => setLimit(limit + 10)} className="w-12 h-12 bg-gray-50 rounded-xl font-black">+10</button>
+            <button type="button" onClick={() => setLimit(limit + 1)} className="w-12 h-12 bg-gray-50 rounded-xl font-black">+1</button>
           </div>
         </div>
         <div className="flex space-x-3 pt-4">

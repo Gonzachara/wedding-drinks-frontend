@@ -30,8 +30,7 @@ const Bartender: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [blockedMsg, setBlockedMsg] = useState('');
-  const [menu, setMenu] = useState<Array<{ id: number; name: string; points_value: number; category?: string; is_alcoholic: boolean }>>([]);
-  const [showDrinkSelect, setShowDrinkSelect] = useState(false);
+  const [defaultDrink, setDefaultDrink] = useState<{ id: number; is_alcoholic: boolean } | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineQueue, setOfflineQueue] = useState<OfflineTransaction[]>([]);
   const [emergencyMode, setEmergencyMode] = useState<'inactive' | 'alcohol_off' | 'full_stop'>('inactive');
@@ -41,8 +40,15 @@ const Bartender: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    api.get('/menu').then(res => setMenu(res.data)).catch(console.error);
-    
+    api.get('/menu')
+      .then(res => {
+        const list = res.data || [];
+        if (list.length > 0) {
+          setDefaultDrink({ id: list[0].id, is_alcoholic: list[0].is_alcoholic });
+        }
+      })
+      .catch(console.error);
+
     const savedQueue = localStorage.getItem('offline_queue');
     if (savedQueue) {
       setOfflineQueue(JSON.parse(savedQueue));
@@ -78,7 +84,6 @@ const Bartender: React.FC = () => {
           // Actualizar estado y puntos en tiempo real
           setGuest(prev => prev ? { ...prev, status: payload.status, points_consumed: payload.points_consumed, points_limit: payload.points_limit } : prev);
           if (payload.status !== 'active') {
-            setShowDrinkSelect(false);
             setError(payload.status === 'blocked' ? 'LÍMITE ALCANZADO' : 'INVITADO EN COOLDOWN');
           } else {
             setError('');
@@ -153,7 +158,6 @@ const Bartender: React.FC = () => {
     setGuest(null);
     setSuccessMsg('');
     setBlockedMsg('');
-    setShowDrinkSelect(false);
 
     try {
       const response = await api.get(`/bartender/guest/${codeToSearch}`);
@@ -170,11 +174,11 @@ const Bartender: React.FC = () => {
     }
   };
 
-  const handleRegisterDrink = async (drink: any) => {
-    if (!guest) return;
+  const handleRegisterDrink = async () => {
+    if (!guest || !defaultDrink) return;
     
     // Check emergency mode client-side
-    if (emergencyMode === 'full_stop' || (emergencyMode === 'alcohol_off' && drink.is_alcoholic)) {
+    if (emergencyMode === 'full_stop' || (emergencyMode === 'alcohol_off' && defaultDrink.is_alcoholic)) {
       setError('MODO EMERGENCIA ACTIVO');
       return;
     }
@@ -188,7 +192,7 @@ const Bartender: React.FC = () => {
       const offlineTx: OfflineTransaction = {
         id: Math.random().toString(36).substr(2, 9),
         guest_code: guest.unique_code,
-        drink_id: drink.id,
+        drink_id: defaultDrink.id,
         points_value: pointsValue,
         local_timestamp: new Date().toISOString()
       };
@@ -207,7 +211,7 @@ const Bartender: React.FC = () => {
     try {
       const response = await api.post(`/bartender/drink`, {
         guest_code: guest.unique_code,
-        drink_id: drink.id,
+        drink_id: defaultDrink.id,
         device_info: window.navigator.userAgent
       });
 
@@ -216,7 +220,6 @@ const Bartender: React.FC = () => {
 
       setTimeout(() => {
         setSuccessMsg('');
-        setShowDrinkSelect(false);
       }, 2000);
 
     } catch (err: any) {
@@ -411,52 +414,20 @@ const Bartender: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                {!showDrinkSelect ? (
-                  <button
-                    onClick={() => setShowDrinkSelect(true)}
-                    disabled={loading || guest.status !== 'active'}
-                    className="w-full bg-black text-white py-8 rounded-[2rem] font-black text-2xl shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
-                  >
-                    <GlassWater size={32} />
-                    <span>SELECCIONAR BEBIDA</span>
-                  </button>
-                ) : (
-                  <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">Carta de Tragos</p>
-                    <div className="grid grid-cols-1 gap-2 max-h-[40vh] overflow-y-auto pr-1">
-                      {menu.map(drink => (
-                        <button
-                          key={drink.id}
-                          onClick={() => handleRegisterDrink(drink)}
-                          disabled={loading}
-                          className="flex items-center justify-between p-4 bg-gray-50 hover:bg-black hover:text-white rounded-2xl transition-all border border-gray-100 text-left group"
-                        >
-                          <div>
-                            <p className="font-black text-sm uppercase leading-none">{drink.name}</p>
-                            <p className="text-[10px] font-bold text-gray-400 group-hover:text-white/60">
-                              {drink.category || 'Sin categoría'} {drink.is_alcoholic ? '🍸' : '💧'}
-                            </p>
-                          </div>
-                          <span className="font-black text-lg">+1 bebida</span>
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setShowDrinkSelect(false)}
-                      className="w-full py-4 text-gray-400 font-bold tracking-widest uppercase hover:text-black"
-                    >
-                      VOLVER
-                    </button>
-                  </div>
-                )}
-                {!showDrinkSelect && (
-                  <button
-                    onClick={handleClear}
-                    className="w-full py-6 text-gray-400 font-bold tracking-widest uppercase hover:text-black transition-colors"
-                  >
-                    CANCELAR
-                  </button>
-                )}
+                <button
+                  onClick={handleRegisterDrink}
+                  disabled={loading || guest.status !== 'active' || !defaultDrink}
+                  className="w-full bg-black text-white py-8 rounded-[2rem] font-black text-2xl shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
+                >
+                  <GlassWater size={32} />
+                  <span>DESCONTAR BEBIDA</span>
+                </button>
+                <button
+                  onClick={handleClear}
+                  className="w-full py-6 text-gray-400 font-bold tracking-widest uppercase hover:text-black transition-colors"
+                >
+                  CANCELAR
+                </button>
               </div>
             </div>
             {error && (
