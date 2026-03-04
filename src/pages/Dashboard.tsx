@@ -14,7 +14,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { GlassWater, Users, Ban, TrendingUp, Clock, MapPin, Download, ArrowLeft } from 'lucide-react';
+import { GlassWater, Users, Ban, Clock, MapPin, Download, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 ChartJS.register(
