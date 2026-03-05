@@ -38,6 +38,7 @@ const App: React.FC = () => {
             <Route path="/create-user" element={<CreateUser />} />
             <Route path="/guest/:code" element={<Guest />} />
             <Route path="/portal" element={<GuestPortal />} />
+            <Route path="/buscar" element={<GuestPortal />} />
             <Route path="/projectable" element={<Projectable />} />
             <Route 
               path="/admin" 

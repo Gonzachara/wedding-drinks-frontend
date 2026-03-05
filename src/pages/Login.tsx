@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { GlassWater, Lock, UserRound } from 'lucide-react';
-import { Link } from 'react-router-dom';
+// import { Link } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -166,11 +166,7 @@ const Login: React.FC = () => {
           BUSCAR MI CÓDIGO
         </button>
 
-        <div className="mt-4 text-center">
-          <Link to="/create-user" className="text-xs text-gray-500 underline hover:text-gray-800">
-            Crear usuario temporalmente
-          </Link>
-        </div>
+        {/* Enlace a crear usuario oculto intencionalmente para evitar acceso desde UI */}
       </div>
     </div>
   );
